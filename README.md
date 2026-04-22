@@ -1,3 +1,4 @@
+因 GitHub 排版问题，请将⚪替换为#
 ⚪ ⚪ 存储路径参考：
 ⚪ ⚪   Windows : %APPDATA%\io.github.clash-verge-rev.clash-verge-rev\profiles
 ⚪ ⚪   macOS   : ~/Library/Application Support/io.github.clash-verge-rev.clash-verge-rev/profiles
