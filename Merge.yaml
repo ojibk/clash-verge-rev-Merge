@@ -203,21 +203,6 @@ rule-providers:
     lazy: true        # ⚙️ 启动时采用懒加载。设计上域名分流集应启动即就绪，但鉴于该规则集条目数量庞大，若强制启动即构建会阻塞启动性能。故采用懒加载作为权衡。
     interval: 86400   # ⏱️ 缓存有效期：86400 秒 = 24 小时（超过此时长，或内核重启时检测到缓存已过期，才会重新拉取）。上游规则集变动较频繁，设定较短缓存周期以跟进更新。
 
-    #个人扩展
-  Amazon_Shopping: # 🛡️ 亚马逊购物常用域名集
-    # 💡 收录 亚马逊全球 24 个零售站点 + 核心静态图片资产 + 前端组件库的全盘直连（不含 AWS 基础云，防止代理污染）
-    #    命中此规则集的流量以国内直连为优先，而非走代理。
-    #    direct 位于 proxy 之前，域名优先命中 direct，不会滑落至 proxy 规则集。
-    type: http        # ℹ️ 类型：远程 HTTP 资源。
-    behavior: domain  # ℹ️ 行为：域名模式，内核构建后缀匹配树（Domain Trie）。
-    format: yaml      # ℹ️ 格式：含 payload: 头，必须使用 yaml。
-    url: "https://ghproxy.net/https://github.com/ojibk/rules/releases/download/release/Amazon_Shopping.list"
-                      # ℹ️ 远程地址：ghproxy 加速，国内可达性优于 GitHub 官方。
-                      #    直链备用：https://github.com/ojibk/rules/releases/download/release/Amazon_Shopping.list
-    path: "./rules/providers/Amazon_Shopping.list"
-    lazy: false       # ⚙️ 核心分流规则建议不开启懒加载，启动即构建 Trie 树，启动即就绪。
-    interval: 604800  # ⏱️ 缓存有效期：604800 秒 = 7 天（超过此时长，或内核重启时检测到缓存已过期，才会重新拉取，不保证实时同步）。  
-
   proxy: # 🛡️ 境外常用需代理域名集 (Loyalsoldier proxy.txt)
     # 💡 收录 Google / GitHub / Telegram / Twitter (X) / YouTube 等高频境外服务域名。
     #    命中此规则集的流量送入锚点组 [节点选择]，经用户所选代理节点出站。
@@ -231,7 +216,22 @@ rule-providers:
                       #    直链备用（jsDelivr 失效时）：https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/proxy.txt
     path: "./rules/providers/proxy.list"
     lazy: false       # ⚙️ 核心分流规则建议不开启懒加载，启动即构建 Trie 树，启动即就绪。
-    interval: 86400   # ⏱️ 缓存有效期：86400 秒 = 24 小时（超过此时长，或内核重启时检测到缓存已过期，才会重新拉取）。境外代理域名列表变动较频繁，设定较短缓存周期以跟进更新。  
+    interval: 86400   # ⏱️ 缓存有效期：86400 秒 = 24 小时（超过此时长，或内核重启时检测到缓存已过期，才会重新拉取）。境外代理域名列表变动较频繁，设定较短缓存周期以跟进更新。
+
+#个人扩展
+  Amazon_Shopping: # 🛡️ 亚马逊购物常用域名集
+    # 💡 收录 亚马逊全球 24 个零售站点 + 核心静态图片资产 + 前端组件库的全盘直连（不含 AWS 基础云，防止代理污染）
+    #    命中此规则集的流量以国内直连为优先，而非走代理。
+    #    direct 位于 proxy 之前，域名优先命中 direct，不会滑落至 proxy 规则集。
+    type: http        # ℹ️ 类型：远程 HTTP 资源。
+    behavior: domain  # ℹ️ 行为：域名模式，内核构建后缀匹配树（Domain Trie）。
+    format: yaml      # ℹ️ 格式：含 payload: 头，必须使用 yaml。
+    url: "https://ghproxy.net/https://github.com/ojibk/rules/releases/download/release/Amazon_Shopping.list"
+                      # ℹ️ 远程地址：ghproxy 加速，国内可达性优于 GitHub 官方。
+                      #    直链备用：https://github.com/ojibk/rules/releases/download/release/Amazon_Shopping.list
+    path: "./rules/providers/Amazon_Shopping.list"
+    lazy: false       # ⚙️ 核心分流规则建议不开启懒加载，启动即构建 Trie 树，启动即就绪。
+    interval: 604800  # ⏱️ 缓存有效期：604800 秒 = 7 天（超过此时长，或内核重启时检测到缓存已过期，才会重新拉取，不保证实时同步）。 
 
 # # ======================================================================================
 # # ░░ 策略组 (Proxy Groups) — 必须声明，锚定策略组是 rules 出口的唯一保障
@@ -356,10 +356,10 @@ rules:
                                             # ⚠️ 若需禁用，须同时注释此行与 rule-providers 中的 reject 块后再重载（强联动约束），不可分步。
 
   # ▌域名分流集 — 依赖远程规则集加载状态，direct 在前确保国内域名优先命中
-  - RULE-SET,direct,DIRECT              # 🔓 国内主流域名 → 直连，基于 Domain Trie 极速放行。
+  - RULE-SET,direct,DIRECT              # 🔓 国内主流域名 → 直连，基于 Domain Trie 极速命中。
                                         #    精确域名匹配直接放行，无需经过 GeoIP 推断，自然规避 CDN 多归属场景下的归属误判；
                                         #    小众域名盲区由归属地映射层（GEOIP,CN）补盲覆盖。
-  - RULE-SET,Amazon_Shopping,DIRECT     # 🔓 个人扩展：亚马逊购物常用域名集 → 直连，基于 Domain Trie 极速放行。
+  - RULE-SET,Amazon_Shopping,DIRECT     # 🔓 个人扩展：亚马逊购物常用域名集 → 直连，基于 Domain Trie 极速命中。
   - RULE-SET,proxy,节点选择              # 🛡️ 境外代理域名 → 送入锚点组 [节点选择]，经用户所选代理节点出站。
 
   # ▌归属地映射 — 内置 GeoIP 库基于静态 IP 注册数据进行归属地查询推断，不代表实际物理位置，在 CDN / Anycast（任播）调度下存在不可避免的归属地误差。
