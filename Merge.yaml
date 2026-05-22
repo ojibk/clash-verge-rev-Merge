@@ -113,7 +113,7 @@ rule-providers:
     url: "https://testingcf.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/private.txt"
                       # ℹ️ 远程地址：jsDelivr 官方 Cloudflare 节点，国内可达性优于 fastly 节点。
                       #    查看文件提交记录：https://github.com/Loyalsoldier/clash-rules/blob/release/private.txt
-                      #    直链备用（jsDelivr 失效时）：https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/private.txt
+                      #    备用直链（jsDelivr 失效时）：https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/private.txt
     path: "./rules/providers/private.list"
                       # ℹ️ 本地缓存路径：相对于 Mihomo 工作目录；路径须位于 Mihomo 允许写入的目录范围内。
                       # ⚠️ 若目录不存在或无写入权限：
@@ -137,7 +137,7 @@ rule-providers:
     url: "https://testingcf.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/lancidr.txt"
                       # ℹ️ 远程地址：jsDelivr 官方 Cloudflare 节点，国内可达性优于 fastly 节点。
                       #    查看文件提交记录：https://github.com/Loyalsoldier/clash-rules/blob/release/lancidr.txt
-                      #    直链备用（jsDelivr 失效时）：https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/lancidr.txt
+                      #    备用直链（jsDelivr 失效时）：https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/lancidr.txt
     path: "./rules/providers/lan_cidr.list"
                       # ⚠️ 缓存落盘前提同 private：路径须位于 Mihomo 允许写入的目录范围内且有写入权限，
                       #    否则退化为内存缓存，每次启动重新下载。
@@ -157,7 +157,7 @@ rule-providers:
     url: "https://testingcf.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/AdvertisingLite/AdvertisingLite_Domain.txt"
                       # ℹ️ 远程地址：jsDelivr 官方 Cloudflare 节点，国内可达性优于 fastly 节点。
                       #    查看文件提交记录：https://github.com/blackmatrix7/ios_rule_script/blob/master/rule/Clash/AdvertisingLite/AdvertisingLite_Domain.txt
-                      #    直链备用（jsDelivr 失效时）：https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/AdvertisingLite/AdvertisingLite_Domain.txt
+                      #    备用直链（jsDelivr 失效时）：https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/AdvertisingLite/AdvertisingLite_Domain.txt
     path: "./rules/providers/AdvertisingLite_Domain.list"
     lazy: true        # ⚙️ 首次被规则链求值时才构建 Trie 树，跳过启动阶段构建开销，显著提升启动速度。
                       # ⚡ 代价：首次命中时同步触发 Trie 树构建，该连接会承受首次构建的短时阻塞（通常在数十毫秒内，极端情况可能更久），连接会同步等待 Trie 构建完成。
@@ -178,7 +178,7 @@ rule-providers:
     url: "https://testingcf.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/reject.txt"
                       # ℹ️ 远程地址：jsDelivr 官方 Cloudflare 节点，国内可达性优于 fastly 节点。
                       # ℹ️ 查看文件提交记录：https://github.com/Loyalsoldier/clash-rules/blob/release/reject.txt
-                      #    直链备用（jsDelivr 失效时）：https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/reject.txt
+                      #    备用直链（jsDelivr 失效时）：https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/reject.txt
     path: "./rules/providers/reject.list"
     lazy: true        # ⚙️ 首次被规则链求值时才构建 Trie 树，跳过启动阶段构建开销，显著提升启动速度。
                       # ⚡ 代价：首次命中时同步触发 Trie 树构建，该连接会承受首次构建的短时阻塞（通常在数十毫秒内）。
@@ -198,7 +198,7 @@ rule-providers:
     url: "https://testingcf.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/direct.txt"
                       # ℹ️ 远程地址：jsDelivr 官方 Cloudflare 节点，国内可达性优于 fastly 节点。
                       #    查看文件提交记录：https://github.com/Loyalsoldier/clash-rules/blob/release/direct.txt
-                      #    直链备用（jsDelivr 失效时）：https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/direct.txt
+                      #    备用直链（jsDelivr 失效时）：https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/direct.txt
     path: "./rules/providers/direct.list"
     lazy: true        # ⚙️ 启动时采用懒加载。设计上域名分流集应启动即就绪，但鉴于该规则集条目数量庞大，若强制启动即构建会阻塞启动性能。故采用懒加载作为权衡。
     interval: 86400   # ⏱️ 缓存有效期：86400 秒 = 24 小时（超过此时长，或内核重启时检测到缓存已过期，才会重新拉取）。上游规则集变动较频繁，设定较短缓存周期以跟进更新。
@@ -213,7 +213,7 @@ rule-providers:
     url: "https://testingcf.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/proxy.txt"
                       # ℹ️ 远程地址：jsDelivr 官方 Cloudflare 节点，国内可达性优于 fastly 节点。
                       #    查看文件提交记录：https://github.com/Loyalsoldier/clash-rules/blob/release/proxy.txt
-                      #    直链备用（jsDelivr 失效时）：https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/proxy.txt
+                      #    备用直链（jsDelivr 失效时）：https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/proxy.txt
     path: "./rules/providers/proxy.list"
     lazy: false       # ⚙️ 核心分流规则建议不开启懒加载，启动即构建 Trie 树，启动即就绪。
     interval: 86400   # ⏱️ 缓存有效期：86400 秒 = 24 小时（超过此时长，或内核重启时检测到缓存已过期，才会重新拉取）。境外代理域名列表变动较频繁，设定较短缓存周期以跟进更新。
@@ -226,9 +226,9 @@ rule-providers:
     type: http        # ℹ️ 类型：远程 HTTP 资源。
     behavior: domain  # ℹ️ 行为：域名模式，内核构建后缀匹配树（Domain Trie）。
     format: yaml      # ℹ️ 格式：含 payload: 头，必须使用 yaml。
-    url: "https://ghproxy.net/https://github.com/ojibk/rules/releases/download/release/Amazon_Shopping.list"
-                      # ℹ️ 远程地址：ghproxy 加速，国内可达性优于 GitHub 官方。
-                      #    直链备用：https://github.com/ojibk/rules/releases/download/release/Amazon_Shopping.list
+    url: "https://testingcf.jsdelivr.net/gh/ojibk/rules@main/Amazon_Shopping.list"
+                      # ℹ️ 远程地址（JSDelivr/CF 加速），国内可达性优于 GitHub 官方，⚠️ 但 CDN 边缘节点缓存与源文件非实时同步（若内容未更新，请使用直链检查源文件）。
+                      #    备用直链：https://raw.githubusercontent.com/ojibk/rules/main/Amazon_Shopping.list
     path: "./rules/providers/Amazon_Shopping.list"
     lazy: false       # ⚙️ 核心分流规则建议不开启懒加载，启动即构建 Trie 树，启动即就绪。
     interval: 604800  # ⏱️ 缓存有效期：604800 秒 = 7 天（超过此时长，或内核重启时检测到缓存已过期，才会重新拉取，不保证实时同步）。 
