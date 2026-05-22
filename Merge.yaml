@@ -1,4 +1,4 @@
-# # Clash-Merge 扩展覆写配置 · 锚点组与规则链 v260522
+# # Clash-Merge 扩展覆写配置 · 锚点组与规则链 v260523
 # # --------------------------------------------------------------------------------------
 # # 存储路径参考：
 # #   Windows : %APPDATA%\io.github.clash-verge-rev.clash-verge-rev\profiles
@@ -159,8 +159,8 @@ rule-providers:
                       #    查看文件提交记录：https://github.com/blackmatrix7/ios_rule_script/blob/master/rule/Clash/AdvertisingLite/AdvertisingLite_Domain.txt
                       #    备用直链（jsDelivr 失效时）：https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/AdvertisingLite/AdvertisingLite_Domain.txt
     path: "./rules/providers/AdvertisingLite_Domain.list"
-    lazy: true        # ⚙️ 首次被规则链求值时才构建 Trie 树，跳过启动阶段构建开销，显著提升启动速度。
-                      # ⚡ 代价：首次命中时同步触发 Trie 树构建，该连接会承受首次构建的短时阻塞（通常在数十毫秒内，极端情况可能更久），连接会同步等待 Trie 构建完成。
+    lazy: true        # ⚙️ 懒加载：跳过启动阶段构建开销，首次被规则链求值时才同步阻塞执行（⚡ 代价：首次命中的连接会承受首次构建的短时阻塞，连接会同步等待构建完成）：
+                      # 1. 磁盘IO读取缓存（瓶颈，取决于存储介质）、 2. 反序列化解析（YAML/Text，堆内存分配）、 3. 构建Trie树（CPU运算，通常<50ms）
     interval: 86400   # ⏱️ 缓存有效期：86400 秒 = 24 小时（超过此时长，或内核重启时检测到缓存已过期，才会重新拉取）。上游规则集变动较频繁，设定较短缓存周期以跟进更新。
 
   reject: # 🚫 威胁域名拦截集（广告联盟 / 追踪器 / 恶意软件 / C2 命令与控制域名）(Loyalsoldier reject.txt)
@@ -168,7 +168,7 @@ rule-providers:
     #   reject.txt              → 恶意特征（恶意软件 / 追踪器 / C2 命令与控制域名） → 安全防护
     #   AdvertisingLite_Domain  → 应用内广告域名 → 体验优化
     #   两者互补，非替代关系。
-    # 💡 启动性能与延迟权衡：已设 lazy: true，以此将 Trie 树的构建开销从启动阶段转移至首次被规则链求值时。此举可加快启动速度，代价是首次命中该规则集的连接会承受一次性的构建延迟。
+    # 💡 启动性能与延迟权衡：启用懒加载以将构建开销从启动阶段转移至首次被规则链求值时。此举可加快启动速度，代价是首次命中该规则集的连接会承受一次性的构建延迟。
     # ⚠️ 前置依赖（强联动约束）：若需禁用，须同时注释此块与 rules 段的 RULE-SET,reject,REJECT 行后再重载。
     #    · 风险：仅注释此块而 rules 行仍活跃：内核启动即报"provider reject not found"，整个配置加载失败。
     #    · 两者互为前置依赖，作为强联动约束必须同步禁用，不可分步重载。
@@ -180,8 +180,8 @@ rule-providers:
                       # ℹ️ 查看文件提交记录：https://github.com/Loyalsoldier/clash-rules/blob/release/reject.txt
                       #    备用直链（jsDelivr 失效时）：https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/reject.txt
     path: "./rules/providers/reject.list"
-    lazy: true        # ⚙️ 首次被规则链求值时才构建 Trie 树，跳过启动阶段构建开销，显著提升启动速度。
-                      # ⚡ 代价：首次命中时同步触发 Trie 树构建，该连接会承受首次构建的短时阻塞（通常在数十毫秒内）。
+    lazy: true        # ⚙️ 懒加载：跳过启动阶段构建开销，首次被规则链求值时才同步阻塞执行（⚡ 代价：首次命中的连接会承受首次构建的短时阻塞，连接会同步等待构建完成）：
+                      # 1. 磁盘IO读取缓存（瓶颈，取决于存储介质）、 2. 反序列化解析（YAML/Text，堆内存分配）、 3. 构建Trie树（CPU运算，通常<50ms）
     interval: 86400   # ⏱️ 缓存有效期：86400 秒 = 24 小时（超过此时长，或内核重启时检测到缓存已过期，才会重新拉取）。上游规则集变动较频繁，设定较短缓存周期以跟进更新。
 
   direct: # 🔓 国内主流域名直连集 (Loyalsoldier direct.txt)
@@ -218,7 +218,7 @@ rule-providers:
     lazy: false       # ⚙️ 核心分流规则建议不开启懒加载，启动即构建 Trie 树，启动即就绪。
     interval: 86400   # ⏱️ 缓存有效期：86400 秒 = 24 小时（超过此时长，或内核重启时检测到缓存已过期，才会重新拉取）。境外代理域名列表变动较频繁，设定较短缓存周期以跟进更新。
 
-#个人扩展
+# 个人扩展
   Amazon_Shopping: # 🛡️ 亚马逊购物常用域名集
     # 💡 收录亚马逊全球零售站点 + 核心静态图片资产 + 广告与前端组件库 + 卖家及物流体系规则集（不含 AWS 基础云，防止代理污染）
     #    命中此规则集的流量以国内直连为优先，而非走代理。
@@ -371,8 +371,8 @@ rules:
   - GEOIP,PRIVATE,DIRECT,no-resolve     # 🔓 私有 IP 地址段 → 直连（RFC 1918，私有 IP 地址分配标准），
                                         #    绝对确定集合，基于 RFC 标准，无误判风险；故排于 CN（统计性集合）规则之前；与本地放行集形成双重保障。
   - GEOIP,CN,DIRECT,no-resolve          # 🔓 国内 IP 段 → 直连（统计性集合，基于 IP 注册归属弥补域名长尾盲区；存在 CDN 动态调度导致的归属地误判风险）。
-                                         # ⚠️ 风险注意：未被域名分流集收录的国内企业内网域名、私有 SaaS 将走代理出口；
-                                         #    对有数据不出境合规要求的场景（金融 / 医疗 / 政务），须手动添加精确直连规则覆盖。
+                                        # ⚠️ 风险注意：未被域名分流集收录的国内企业内网域名、私有 SaaS 将走代理出口；
+                                        #    对有数据不出境合规要求的场景（金融 / 医疗 / 政务），须手动添加精确直连规则覆盖。
 
   # ▌无条件兜底 — 承接所有未命中流量，MATCH 保证规则链始终有出口锚点
   # ⚠️ 若所有 rule-providers 加载失败且无缓存，将退化为近似全局代理模式，用户无明显提示。
@@ -712,7 +712,7 @@ rules:
 # #
 # # 【懒加载策略分层】
 # #  · private / lan_cidr / proxy：lazy: false，核心路由必须启动即就绪。
-# #  · direct：lazy: true，上游条目数量庞大，强制构建阻塞启动，作出性能取舍。
+# #  · direct：lazy: true，上游条目数量庞大，强制启动即构建会阻塞启动，作出性能取舍。
 # #  · AdvertisingLite_Domain / reject：lazy: true，威胁阻断集可容忍首次命中短时延迟。
 # #
 # # 【锚点组架构】
