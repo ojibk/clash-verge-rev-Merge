@@ -149,7 +149,7 @@ rule-providers:
     # 💡 变体选型说明（三选一）：
     #   Advertising.list              → classical 传统格式（含完整规则指令，如 DOMAIN,example.com,REJECT），与 behavior: domain 不兼容，不可使用。
     #   Advertising_Domain.list       → 纯域名完整版，条目数量庞大，加载耗时长，可能导致内核启动时 IPC（进程间通信）超时。
-    #   AdvertisingLite_Domain.txt    → 纯域名精简版，覆盖主流广告域名 ✅ 选用。体积小，启动性能更优，日常使用覆盖率足够。
+    #   AdvertisingLite_Domain.txt    → 纯域名精简版，覆盖主流广告域名。体积小，启动性能更优，日常使用覆盖率足够。
     type: http        # ℹ️ 类型：远程 HTTP 资源。
     behavior: domain  # ℹ️ 行为：域名模式，精简版文件为纯域名裸列表，严格对应 domain 模式。
     format: text      # ℹ️ 格式：Blackmatrix7 源为纯文本裸列表，不含 payload: 头，必须使用 text。
@@ -227,7 +227,7 @@ rule-providers:
     behavior: domain  # ℹ️ 行为：域名模式，内核构建后缀匹配树（Domain Trie）。
     format: yaml      # ℹ️ 格式：含 payload: 头，必须使用 yaml。
     url: "https://testingcf.jsdelivr.net/gh/ojibk/rules@main/Amazon_Shopping.list"
-                      # ℹ️ 远程地址（JSDelivr/CF 加速），国内可达性优于 GitHub 官方，⚠️ 但 CDN 边缘节点缓存与源文件非实时同步（若内容未更新，请使用直链检查源文件）。
+                      # ℹ️ 远程地址（jsDelivr/CF 加速），国内可达性优于 GitHub 官方，⚠️ 但 CDN 边缘节点缓存与源文件非实时同步（若内容未更新，请使用直链检查源文件）。
                       #    备用直链：https://raw.githubusercontent.com/ojibk/rules/main/Amazon_Shopping.list
     path: "./rules/providers/Amazon_Shopping.list"
     lazy: false       # ⚙️ 核心分流规则建议不开启懒加载，启动即构建 Trie 树，启动即就绪。
