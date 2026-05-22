@@ -200,7 +200,7 @@ rule-providers:
                       #    查看文件提交记录：https://github.com/Loyalsoldier/clash-rules/blob/release/direct.txt
                       #    备用直链（jsDelivr 失效时）：https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/direct.txt
     path: "./rules/providers/direct.list"
-    lazy: true        # ⚙️ 启动时采用懒加载。设计上域名分流集应启动即就绪，但鉴于该规则集条目数量庞大，若强制启动即构建会阻塞启动性能。故采用懒加载作为权衡。
+    lazy: true        # ⚙️ 启动时采用懒加载。设计上域名分流集应启动即就绪，但鉴于该规则集条目数量庞大，若强制启动即构建会阻塞启动性能（磁盘性能为主要瓶颈）。故采用懒加载作为权衡。
     interval: 86400   # ⏱️ 缓存有效期：86400 秒 = 24 小时（超过此时长，或内核重启时检测到缓存已过期，才会重新拉取）。上游规则集变动较频繁，设定较短缓存周期以跟进更新。
 
   proxy: # 🛡️ 境外常用需代理域名集 (Loyalsoldier proxy.txt)
