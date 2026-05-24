@@ -1,4 +1,4 @@
-# # Clash-Merge 扩展覆写配置 · 锚点组与规则链 v260524
+# # Clash-Merge 扩展覆写配置 · 锚点组与规则链 v260523
 # # --------------------------------------------------------------------------------------
 # # 存储路径参考：
 # #   Windows : %APPDATA%\io.github.clash-verge-rev.clash-verge-rev\profiles
@@ -215,7 +215,7 @@ rule-providers:
                       #    查看文件提交记录：https://github.com/Loyalsoldier/clash-rules/blob/release/proxy.txt
                       #    备用直链（jsDelivr 失效时）：https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/proxy.txt
     path: "./rules/providers/proxy.list"
-    lazy: false       # ⚙️ 核心分流规则建议不开启懒加载，启动即构建 Trie 树，启动即就绪。该规则集条目数量庞大，但 proxy 的就绪优先级高于 direct，故不懒加载
+    lazy: false       # ⚙️ 核心分流规则建议不开启懒加载，启动即构建 Trie 树，启动即就绪。该规则集条目数量庞大，但 proxy 的就绪优先级高于 direct，故不懒加载。
     interval: 86400   # ⏱️ 缓存有效期：86400 秒 = 24 小时（内核运行时按 interval 周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取）。境外代理域名列表变动较频繁，设定较短缓存周期以跟进更新。
 
 # 个人扩展
@@ -229,8 +229,8 @@ rule-providers:
                       # ℹ️ 远程地址（jsDelivr/CF 加速），国内可达性优于 GitHub 官方，⚠️ 但 CDN 边缘节点缓存与源文件非实时同步（若内容未更新，请使用直链检查源文件）。
                       #    备用直链：https://raw.githubusercontent.com/ojibk/rules/main/Amazon_Shopping.list
     path: "./rules/providers/Amazon_Shopping.list"
-    lazy: false       # ⚙️ 核心分流规则建议不开启懒加载，启动即构建 Trie 树，启动即就绪。
-    interval: 604800  # ⏱️ 缓存有效期：604800 秒 = 7 天（内核运行时按 interval 周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取，不保证实时同步）。 
+    lazy: true        # ⚙️ 专用规则集，使用率低。故采用懒加载作为权衡。
+    interval: 604800  # ⏱️ 缓存有效期：604800 秒 = 7 天（内核运行时按 interval 周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取，不保证实时同步）。
 
 # # ======================================================================================
 # # ░░ 策略组 (Proxy Groups) — 必须声明，锚定策略组是 rules 出口的唯一保障
