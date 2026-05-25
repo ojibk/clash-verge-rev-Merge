@@ -121,7 +121,7 @@ rule-providers:
                       #    · 失败时退化为仅内存缓存（不落盘），每次启动均需重新下载规则集。
                       #    · 若需将缓存写入工作目录外的路径，须将目标路径加入系统环境变量 SAFE_PATHS
                       #      （详见 Mihomo v1.19.6+ Release Notes；不可在 YAML 中以字段形式声明）。
-    lazy: false       # ⚙️ 启动即构建 Trie 树，本地放行集属于核心路由，必须启动即就绪，强烈建议禁用懒加载。
+    lazy: false       # ⚙️ 启动即构建 Trie 树，本地放行集属于核心路由，必须启动即就绪，严禁懒加载。
     interval: 604800  # ⏱️ 缓存有效期：604800 秒 = 7 天（内核运行时按 interval 周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取，不保证实时同步）。
                       #    私有/保留域名（如 localhost）列表，内容基于 IETF 标准，属极低频变动项，设 7 天以减少不必要的远程拉取请求。
 
@@ -184,38 +184,37 @@ rule-providers:
                       # 1. 磁盘IO读取缓存（瓶颈，取决于存储介质）、 2. 反序列化解析（YAML/Text，堆内存分配）、 3. 构建Trie树（CPU运算，通常<50ms）
     interval: 86400   # ⏱️ 缓存有效期：86400 秒 = 24 小时（内核运行时按 interval 周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取）。上游规则集变动较频繁，设定较短缓存周期以跟进更新。
 
-  direct: # 🔓 国内主流域名直连集 (Loyalsoldier direct.txt)
-    # 💡 收录国内常见域名，条目数量随上游维护动态变化。
-    #    覆盖局限：仅含主流域名，小众 / 地区性 / 企业内部域名不在列表内，
+  ChinaMax_Domain: # 🔓 国内域名直连集 (Blackmatrix7 ChinaMax_Domain.txt)
+    # 💡 收录国内主流及长尾域名，覆盖范围较 Loyalsoldier direct.txt 更广。
+    #    覆盖局限：小众 / 地区性 / 企业内部域名仍可能不在列表内，
     #    由后续归属地映射（GEOIP,CN,DIRECT,no-resolve）以 IP 维度补盲。
-    # ℹ️ direct 与 proxy 存在少量重叠域名，并非严格互斥：极少数域名可能同时被两个列表收录，
-    #    实际行为由规则顺序决定。direct 在前是有意为之的优先级设计：
-    #    确保重叠域名以国内直连为优先，而非走代理。
+    # ℹ️ ChinaMax_Domain 与 Global_Domain 存在少量重叠域名，并非严格互斥：极少数域名可能同时被两个列表收录，
+    #    实际行为由策略规则顺序决定。ChinaMax_Domain 在前是有意为之的优先级设计：确保重叠域名以国内直连为优先，而非走代理。
     type: http        # ℹ️ 类型：远程 HTTP 资源。
     behavior: domain  # ℹ️ 行为：域名模式，内核构建后缀匹配树（Domain Trie），
                       #    在规则集条目数量庞大时性能显著优于 classical 模式的逐行线性扫描。
-    format: yaml      # ℹ️ 格式：Loyalsoldier 源，含 payload: 头，必须使用 yaml。
-    url: "https://testingcf.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/direct.txt"
+    format: text      # ℹ️ 格式：Blackmatrix7 源为纯文本裸列表，每行一条域名，不含 payload: 头。
+    url: "https://testingcf.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/ChinaMax/ChinaMax_Domain.txt"
                       # ℹ️ 远程地址：jsDelivr 官方 Cloudflare 节点，国内可达性优于 fastly 节点。
-                      #    查看文件提交记录：https://github.com/Loyalsoldier/clash-rules/blob/release/direct.txt
-                      #    备用直链（jsDelivr 失效时）：https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/direct.txt
-    path: "./rules/providers/direct.list"
+                      #    查看文件提交记录：https://github.com/blackmatrix7/ios_rule_script/blob/master/rule/Clash/ChinaMax/ChinaMax_Domain.txt
+                      #    备用直链（jsDelivr 失效时）：https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/ChinaMax/ChinaMax_Domain.txt
+    path: "./rules/providers/ChinaMax_Domain.list"
     lazy: true        # ⚙️ 启动时懒加载。设计上域名分流集应启动即就绪，但鉴于该规则集条目数量庞大，若强制启动即构建会阻塞启动性能（磁盘 IO + Trie 构建）。故采用懒加载作为权衡。
     interval: 86400   # ⏱️ 缓存有效期：86400 秒 = 24 小时（内核运行时按 interval 周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取）。上游规则集变动较频繁，设定较短缓存周期以跟进更新。
 
-  proxy: # 🛡️ 境外常用需代理域名集 (Loyalsoldier proxy.txt)
+  Global_Domain: # 🛡️ 境外常用需代理域名集 (Blackmatrix7 Global_Domain.txt)
     # 💡 收录 Google / GitHub / Telegram / Twitter (X) / YouTube 等高频境外服务域名。
     #    命中此规则集的流量送入锚点组 [节点选择]，经用户所选代理节点出站。
-    #    direct 位于 proxy 之前，国内域名优先命中 direct，不会滑落至 proxy 规则集。
+    #    rules 中直连规则置于代理规则之前，国内域名优先命中直连出口，不会滑落至 Global_Domain。
     type: http        # ℹ️ 类型：远程 HTTP 资源。
     behavior: domain  # ℹ️ 行为：域名模式，内核构建后缀匹配树（Domain Trie）。
-    format: yaml      # ℹ️ 格式：Loyalsoldier 源，含 payload: 头，必须使用 yaml。
-    url: "https://testingcf.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/proxy.txt"
+    format: text      # ℹ️ 格式：Blackmatrix7 源为纯文本裸列表，每行一条域名，不含 payload: 头。
+    url: "https://testingcf.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Global/Global_Domain.txt"
                       # ℹ️ 远程地址：jsDelivr 官方 Cloudflare 节点，国内可达性优于 fastly 节点。
-                      #    查看文件提交记录：https://github.com/Loyalsoldier/clash-rules/blob/release/proxy.txt
-                      #    备用直链（jsDelivr 失效时）：https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/proxy.txt
-    path: "./rules/providers/proxy.list"
-    lazy: false       # ⚙️ 核心分流规则建议不开启懒加载，启动即构建 Trie 树，启动即就绪。该规则集条目数量庞大，但 proxy 的就绪必要性高于 direct，故不懒加载。
+                      #    查看文件提交记录：https://github.com/blackmatrix7/ios_rule_script/blob/master/rule/Clash/Global/Global_Domain.txt
+                      #    备用直链（jsDelivr 失效时）：https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Global/Global_Domain.txt
+    path: "./rules/providers/Global_Domain.list"
+    lazy: false       # ⚙️ 核心分流规则建议不开启懒加载，启动即构建 Trie 树，启动即就绪。该规则集条目数量庞大，但代理的就绪必要性高于直连，故不懒加载。
     interval: 86400   # ⏱️ 缓存有效期：86400 秒 = 24 小时（内核运行时按 interval 周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取）。境外代理域名列表变动较频繁，设定较短缓存周期以跟进更新。
 
 # 个人扩展
@@ -224,10 +223,10 @@ rule-providers:
     #    规则集中收录的广告与前端组件域名，可能已被前置的威胁阻断集以 REJECT 动作优先命中，属于预期行为。
     type: http        # ℹ️ 类型：远程 HTTP 资源。
     behavior: domain  # ℹ️ 行为：域名模式，内核构建后缀匹配树（Domain Trie）。
-    format: yaml      # ℹ️ 格式：含 payload: 头，必须使用 yaml。
-    url: "https://testingcf.jsdelivr.net/gh/ojibk/rules@main/Amazon_Shopping.list"
+    format: text      # ℹ️ 格式：纯文本裸列表，每行一条域名，不含 payload: 头。
+    url: "https://testingcf.jsdelivr.net/gh/ojibk/rules@main/Amazon.list"
                       # ℹ️ 远程地址（jsDelivr/CF 加速），国内可达性优于 GitHub 官方，⚠️ 但 CDN 边缘节点缓存与源文件非实时同步（若内容未更新，请使用直链检查源文件）。
-                      #    备用直链：https://raw.githubusercontent.com/ojibk/rules/main/Amazon_Shopping.list
+                      #    备用直链：https://raw.githubusercontent.com/ojibk/rules/main/Amazon.list
     path: "./rules/providers/Amazon_Shopping.list"
     lazy: true        # ⚙️ 专用规则集，使用率低。故采用懒加载作为权衡。
     interval: 604800  # ⏱️ 缓存有效期：604800 秒 = 7 天（内核运行时按 interval 周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取，不保证实时同步）。
@@ -261,7 +260,7 @@ rule-providers:
 proxy-groups:
   - name: 节点选择    # 🛡️ 策略组锚点桩 | rules 规则段唯一关联策略组出口。 💡 硬编码固定策略组名，以确保此覆写配置文件的普适性。                      
                       # 【解耦指引】若需还原订阅原生分组，需将此 proxy-groups 段整体注释，必须同步将 rules 段的引用目标重映射至订阅源内置的原始策略名。
-                      # 🔗【强关联约束】修改组名属于破坏性变更，必须同步更新所有 rules 引用（含 proxy 与 MATCH 行）。
+                      # 🔗【强关联约束】修改组名属于破坏性变更，必须同步更新所有 rules 引用（含代理出口规则行与 MATCH 行）。
                       # ⚠️ 架构风险：若剥离此静态桩，切换订阅时将因组名不一致丧失“语义稳定性”，导致内核配置加载崩溃。
     type: select      # ℹ️ 类型：手动选择，由用户在 UI 代理面板点击切换当前生效节点。
     include-all: true # ⚙️ Mihomo 内核支持字段：自动继承订阅内所有 outbound proxies （不含 proxy groups），
@@ -303,8 +302,8 @@ proxy-groups:
 # #                 GEOIP,PRIVATE 作为 IP 层兜底，在规则集失效时仍可确定性覆盖私有网段。
 # #  ▌威胁阻断集：   远程规则集 REJECT，依赖加载状态，加载失败静默跳过。
 # #  ▌域名分流集：   远程规则集分流，依赖加载状态。
-# #                 direct 与 proxy 存在少量重叠域名，并非严格互斥：极少数域名可能同时被两个列表收录，
-# #                 实际行为由规则顺序决定；direct 在前是有意为之的优先级设计。
+# #                 ChinaMax_Domain 与 Global_Domain 存在少量重叠域名，并非严格互斥：极少数域名可能同时被两个列表收录，
+# #                 实际行为由规则顺序决定；ChinaMax_Domain 在前是有意为之的优先级设计。
 # #  ▌归属地映射：   内置 GeoIP 库，统计性准确，CDN 场景存在误判风险。
 # #                 GeoIP 为内置不可直接访问数据库（通常来源如 MaxMind 、 Loyalsoldier 分发版），与 RULE-SET 可见文件性质不同。
 # #                 出现误判只能通过行为观测定位，无法直接审查数据库内容。
@@ -354,12 +353,12 @@ rules:
   - RULE-SET,reject,REJECT                  # 🚫 恶意特征域名拦截集 → 拒绝，Loyalsoldier reject.txt。
                                             # ⚠️ 若需禁用，须同时注释此行与 rule-providers 中的 reject 块后再重载（强联动约束），不可分步。
 
-  # ▌域名分流集 — 依赖远程规则集加载状态，direct 在前确保国内域名优先命中
-  - RULE-SET,direct,DIRECT              # 🔓 国内主流域名 → 直连，基于 Domain Trie 极速命中。
+  # ▌域名分流集 — 依赖远程规则集加载状态，ChinaMax_Domain 在前确保国内域名优先命中
+  - RULE-SET,ChinaMax_Domain,DIRECT     # 🔓 国内主流域名 → 直连，基于 Domain Trie 极速命中。
                                         #    精确域名匹配直接放行，无需经过 GeoIP 推断，自然规避 CDN 多归属场景下的归属误判；
                                         #    小众域名盲区由归属地映射层（GEOIP,CN）补盲覆盖。
   - RULE-SET,Amazon_Shopping,DIRECT     # 🔓 个人扩展：亚马逊购物常用域名集 → 直连，基于 Domain Trie 极速命中。
-  - RULE-SET,proxy,节点选择              # 🛡️ 境外代理域名 → 送入锚点组 [节点选择]，经用户所选代理节点出站。
+  - RULE-SET,Global_Domain,节点选择      # 🛡️ 境外代理域名 → 送入锚点组 [节点选择]，经用户所选代理节点出站。
 
   # ▌归属地映射 — 内置 GeoIP 库基于静态 IP 注册数据进行归属地查询推断，不代表实际物理位置，在 CDN / Anycast（任播）调度下存在不可避免的归属地误差。
   # 💡 层内顺序遵循确定性优先：PRIVATE（绝对确定）在 CN（统计性集合）之前。
@@ -559,7 +558,7 @@ rules:
 # #   behavior: domain 模式下内核构建的索引结构。
 # #   Trie（前缀树）的通用特性：共享相同前缀的字符串共用相同树路径，无需重复存储公共前缀。
 # #   域名倒序存入（TLD 先入树，子域后入），使得"倒序后的前缀共享"对应域名层面的"后缀共享"，
-# #   从而支持高效的后缀命中（如 google.com 与 maps.google.com 共享同一树路径段）。
+# #   从而支持高效的后缀命中（如 google.com 与 maps.google.com 共享 com→google 此树路径段）。
 # #   单次树查询即可完成匹配，时间复杂度与列表长度无关。
 # #
 # # CIDR Trie（IP 网段前缀匹配树）
@@ -700,6 +699,7 @@ rules:
 # # 【下载源选型】
 # #  所有 rule-providers 使用 testingcf.jsdelivr.net（jsDelivr 官方 Cloudflare 节点）。
 # #  fastly 节点在国内需代理中转，testingcf 无需代理即可稳定访问。
+# #  ⚠️ 部分规则集 URL 须使用 @release 分支；若 @master 分支文件超过 jsDelivr 50 MB 限制，将无法分发。
 # #
 # # 【规则集格式规范】
 # #  Loyalsoldier 源：format: yaml（首行含 payload: 头，误用 text 将导致首条规则损坏）。
@@ -711,8 +711,8 @@ rules:
 # #  精简版覆盖主流广告域名，日常覆盖率足够，启动性能更优。
 # #
 # # 【懒加载策略分层】
-# #  · private / lan_cidr / proxy：lazy: false，核心路由必须启动即就绪。
-# #  · direct：lazy: true，上游条目数量庞大，强制启动即构建会阻塞启动，作出性能取舍。
+# #  · private / lan_cidr / Global_Domain：lazy: false，核心路由必须启动即就绪。
+# #  · ChinaMax_Domain：lazy: true，上游条目数量庞大，强制启动即构建会阻塞启动，作出性能取舍。
 # #  · AdvertisingLite_Domain / reject：lazy: true，威胁阻断集可容忍首次命中短时延迟。
 # #
 # # 【锚点组架构】
