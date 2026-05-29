@@ -126,6 +126,102 @@ global-client-fingerprint: chrome   # 🗑️ [deprecated] 全局 TLS 客户端�
 # #    或启用 respect-rules: true 并确保代理节点可用（需接受上述循环依赖风险）。
 # # ======================================================================================
 
+dns:
+  # 以下三字段由 CVR UI 管理，Merge Config 中的声明值会被 CVR 覆写。
+  # 保留仅作配置意图自文档化；实际生效值以 CVR 设置为准。
+  enable: true
+  listen: 0.0.0.0:53            # ℹ️ DNS 监听地址，TUN 模式下需监听以接管系统 DNS 请求。
+  enhanced-mode: fake-ip        # ⚙️ DNS 工作模式，见上方选型说明。
+                                # ⚠️ 切换为 redir-host 须同步评估 sniffer 协同效果与 DNS 污染暴露面。
+  ipv6: false                   # ⚙️ 禁用 IPv6 解析，避免 AAAA 记录在纯 IPv4 代理节点下引发连接失败。
+                                # 💡 若代理节点支持 IPv6 出站，可改为 true。
+  default-nameserver:           # ⚙️ 引导解析器（Bootstrap DNS）。
+                                # 💡 专用于解析 DoH / DoT 服务器自身域名，
+                                #    避免出现“解析 DNS 服务器前，必须先依赖 DNS”的循环依赖问题。
+                                # ⚠️ 必须使用纯 IP DNS，不能再写域名型 DoH。
+    - 223.5.5.5                 # 阿里 AliDNS
+    - 119.29.29.29              # 腾讯 DNSPod
+  fake-ip-range: 198.18.0.0/15 # ℹ️ 伪 IP 分配段，RFC 2544 基准测试保留段完整范围，不与公网 IP 重叠。原值 198.18.0.1/16 有起始 IP off-by-one 错误。
+
+  fake-ip-filter:               # ℹ️ 以下域名不分配伪 IP，强制走真实 IP 解析（redir-host 语义）。
+                                # 💡 适用场景：时间同步（NTP）/ 连通性探测 / STUN / 本地组播等
+                                #    必须获取真实 IP 才能正常工作的协议，以及与伪 IP 不兼容的 IoT 控制域名。
+    # NTP 时间同步 — 必须解析真实 IP，伪 IP 会导致时间同步失败
+    - "time.*.com"
+    - "time.*.gov"
+    - "time.*.edu.cn"
+    - "time.*.apple.com"
+    - "time1.*.com"
+    - "time2.*.com"
+    - "ntp.*.com"
+    - "*.ntp.org.cn"
+    - "*.time.edu.cn"
+    # STUN — WebRTC 协商需要真实 IP，伪 IP 下 NAT 穿透失败
+    - "+.stun.*.*"
+    - "+.stun.*.*.*"
+    - "+.stun.*.*.*.*"
+    - "+.stun.*.*.*.*.*"
+    # 连通性探测 — 系统网络检测（msftconnecttest / captive portal 等）
+    - "*.msftconnecttest.com"
+    - "*.msftncsi.com"
+    - "*.captive.apple.com"
+    - "network-test.debian.org"
+    - "detectportal.firefox.com"
+    # 本地保留域名 — 与 private 规则集对应，不应经过 DNS 分配伪 IP
+    - "localhost"
+    - "*.lan"
+    - "*.local"
+    - "*.localhost"
+    - "*.localdomain"
+    - "*.internal"
+    - "+.in-addr.arpa"
+    - "+.ip6.arpa"
+    # - "*.arpa"
+
+  respect-rules: false          # ⚙️ DNS 查询不走规则链路由，见上方选型说明。
+                                # 💡 如需防止 DoH 请求的 DNS 泄漏（即 nameserver DoH 的 443 连接本身也走代理），
+                                #    改为 true，但须确保代理节点稳定在线以避免 DNS 引导阶段死锁。
+
+  nameserver-policy:            # ⚙️ 域名分类 DNS 策略，以 geosite 数据库为分类依据（与 geodata-mode: true 统一来源）。 优先级高于 nameserver（默认解析器）。
+    "geosite:cn":               # 国内域名 → 国内权威 DNS（明文，对国内域名通常不存在跨境污染问题，极低延迟）
+      - 223.5.5.5               # 阿里 AliDNS
+      - 119.29.29.29            # 腾讯 DNSPod
+    "geosite:geolocation-!cn":  # 非中国归属域名集合（启发式） → 加密 DoH（防污染）
+      - https://1.1.1.1/dns-query         # Cloudflare DoH
+      - https://8.8.8.8/dns-query         # Google DoH
+    # 💡 nameserver-policy 优先级高于 nameserver（默认解析器），
+    #    未被以上两组收录的域名回落至下方 nameserver 处理。
+
+  nameserver:                   # ⚙️ 默认解析器，处理 nameserver-policy 未覆盖的域名（长尾域名 / 未收录域名）。
+                                # ⚠️ 声明此字段即全量替换订阅原有 nameserver 列表（见 Merge 合并语义说明）。
+                                #    nameserver 使用国内 DoH，境外长尾域名在 fake-ip 模式下可接受国内解析。
+    - https://doh.pub/dns-query           # 腾讯 DNSPod DoH（首选）
+    - https://dns.alidns.com/dns-query    # 阿里 AliDNS DoH（备用）
+
+    # 💡 大陆环境下直连 DoH 可能受阻，参见上方网络环境说明。
+
+  fallback:                     # ⚙️ 当 nameserver 解析结果被 fallback-filter 判定为污染 IP 时，
+                                #    自动切换至 fallback 列表重新解析，以获取可信结果。
+                                # ⚠️ 声明此字段即全量替换订阅原有 fallback 列表（见 Merge 合并语义说明）。
+    - https://1.1.1.1/dns-query    # Cloudflare DoH（境外抗污染）
+    - https://8.8.8.8/dns-query    # Google Public DNS DoH（境外抗污染）
+
+  fallback-filter:              # ⚙️ 污染 IP 识别规则，触发时自动回退至 fallback 解析器。
+  # 存疑审计：fallback-filter.geoip: true + geoip-code: CN 的策略范围偏窄。官方说明是：除 geoip-code 指定国家外，其余 IP 结果会被视为污染并转用 fallback；同时还可以用 geosite 和 domain 直接把命中的域名判为污染、只走 fallback。你现在只用 geoip/ipcidr，意味着判定几乎完全压在 IP 归属上，适合“粗粒度防污染”，但对国外域名、CDN、全球调度服务会更容易触发重查。
+  # 但 fallback 依赖：“判定污染 IP 才触发”。现在只剩：ipcidr blacklist 结果：👉 fallback 触发条件极弱。实际效果：DNS 污染 ≠ 一定触发 fallback；只有命中特定 IP 才触发
+    # geoip: true                 # 启用 GeoIP 过滤：当 nameserver 返回的 IP 非 CN 归属时，标记为可疑结果。
+    # geoip-code: CN              # ℹ️ 仅保留归属 CN 的 IP；境外 IP 视为可能被污染，触发 fallback 重解析。
+    #                             # 💡 此处 geoip-code 与 GEOIP,CN 规则使用相同数据库（geodata-mode: true 下均为 dat 格式），归类标准统一。
+    ipcidr:                     # 补充：明确污染 IP 特征段（国内 DNS 污染常见的虚假回应 IP）
+      - 240.0.0.0/4             # 保留地址段，合法响应不应出现此段
+      - 0.0.0.0/8               # 零地址段，常见于错误或污染响应
+      - 127.0.0.0/8             # 本地回环地址段，公网域名解析结果不应指向 localhost
+
+      # ⚠️ 企业内网、校园网环境慎用（保持注释状态以防内网解析闭环失败）：
+      # - 10.0.0.0/8              # RFC1918 私有地址段，公网域名正常解析不应返回。（企业内网、IoT / 本地服务域名、内网 CDN / 学校资源）
+      # - 172.16.0.0/12           # RFC1918 私有地址段（校园统一认证）
+      # - 192.168.0.0/16          # RFC1918 私有地址段（企业内网、IoT / 本地服务域名、本地教学系统）
+
 # # ======================================================================================
 # # ░░ 策略组 (Proxy Groups) — 必须声明，锚定策略组是 rules 出口的唯一保障
 # # --------------------------------------------------------------------------------------
