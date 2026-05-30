@@ -112,7 +112,7 @@ global-client-fingerprint: chrome   * 🗑️ [deprecated] 全局 TLS 客户端�
 * *    CVR 完整实现，Stash / ClashX 等静默跳过（即该策略组不包含任何节点，成为空组）。
 * *    设为 true 时内核启动自动将订阅内所有 outbound proxies（底层代理节点）及 proxy sets（proxy-providers 声明的节点集合）注入本组（proxy groups 及嵌套策略组均不在继承范围内），
 * *    切换订阅后无需手动维护节点列表。大多数机场提供的均为裸节点，"不含 proxy groups"这条限制在常见场景下影响极小。
-* *  ⚠️ 若不声明此块，切换订阅时一旦订阅不含该组名，Mihomo（代理内核）启动即报错 proxy not found，rules 中所有指向该组的条目失效。
+* *  ⚠️ 若不声明此块，切换订阅时一旦订阅不含该组名，Mihomo（代理内核）启动即报错 proxy XXX not found，rules 中所有指向该组的条目失效。
 * *
 * * 【已知代价】
 * *  proxy-groups 为 Array 类型，声明即触发全量替换，订阅原有所有策略组被丢弃。
@@ -186,7 +186,7 @@ proxy-groups:
 * *
 * *  使用说明：
 * *  ⚠️ 强联动约束（双向同步）：若需禁用，须同时注释此块与 rules 段的对应规则行后再重载。
-* *   · 风险：仅注释此块而 rules 行仍活跃：内核启动即报"provider XXX not found"，整个配置加载失败。两者互为前置依赖，作为强联动约束必须同步禁用，不可分步重载。
+* *   · 风险：仅注释此块而 rules 行仍活跃：内核启动即报错，整个配置加载失败。两者互为前置依赖，作为强联动约束必须同步禁用，不可分步重载。
 
 rule-providers:
 
@@ -740,12 +740,12 @@ rules:
 * * 【锚点组架构】
 * *  在本文件中声明固定名称策略组 [节点选择]，rules 段硬编码指向此名称。
 * *  目的：切换任意订阅时，组名由本文件保证必然存在；
-* *  若依赖订阅自带组名，换订阅后内核因找不到出口组名报 proxy not found 启动失败。
+* *  若依赖订阅自带组名，换订阅后内核因找不到出口组名报 proxy XXX not found 启动失败。
 * *
 * * 【threat 规则集 — 强联动约束】
 * *  threat 提供追踪器 / 恶意软件 / C2 防护层（与 blackmatrix7/EasyPrivacy 语义近似）。
 * *  ⚠️ 启用或禁用时须同步 rule-providers 中的 threat 块与 rules 段的 RULE-SET,threat,REJECT 行的注释状态，
-* *  不可分步重载——仅注释其中一处，内核启动即报 provider not found，整个配置加载失败。
+* *  不可分步重载,仅注释其中一处，内核启动即报错，整个配置加载失败。
 * *
 * * 【geodata-mode: true — GeoIP 数据库格式切换（统一归属判定基准）+ geox-url 落地】
 * *  切换内置 GeoIP 数据库为 dat 格式（MetaCubeX 自维护）。
