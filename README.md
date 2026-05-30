@@ -42,7 +42,7 @@ geox-url:                       * ⚙️ geodata 下载地址。未声明时 Mih
                                 *    注意：MetaCubeX MRS 规则集来自 @meta 分支；dat/mmdb 发布于 @release 分支，两者不同。
   geoip:   "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.dat"
   geosite: "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geosite.dat"
-* * ℹ️ mmdb 字段说明：geodata-mode: true 下主用 geoip.dat / geosite.dat；当 geodata-mode: false 时才使用 mmdb 字段。为 true 时维持声明无影响，仅为保持配置完整性。
+* * ℹ️ mmdb 字段说明：geodata-mode: true 下主用 geoip.dat / geosite.dat；当 geodata-mode: false 时才使用 mmdb 字段，为 true 时维持声明无影响，仅为保持配置完整性。
   mmdb:    "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/country.mmdb"
 
 * * ⚠️ sniffer 配置是扩展脚本（Script.js）注入的 UDP/QUIC 域名类规则正常生效的前提，
@@ -52,7 +52,7 @@ geox-url:                       * ⚙️ geodata 下载地址。未声明时 Mih
 sniffer:
   enable: true                  * ⚙️ 启用流量嗅探：在协议握手或请求阶段提取目标域名，使内核在无 DNS 解析的情况下也能获取域名，用于域名规则匹配。
                                 * ℹ️ 核心价值：应用若直接以 IP 建立连接（绕过 DNS 解析），内核无域名可用，
-                                *    域名规则集（cn / non-cn / Advertising 等）完全无法命中，
+                                *    域名规则集（cn / non-cn / advertising 等）完全无法命中，
                                 *    流量只能由统计性 GEOIP,CN 兜底，或直接落入 MATCH 兜底出口。
                                 *    嗅探来源因协议而异：
                                 *    · TLS：读取 ClientHello 中的 SNI（Server Name Indication，服务器名称指示）字段，该字段在握手阶段明文发出；
@@ -83,13 +83,13 @@ profile:
 *                               * 设为 false（Mihomo 默认值）——重启后伪 IP 映射可能变动，应用程序可能因伪 IP 变化触发重连。
 *                               * ⚠️ 仅 DNS 模式为 fake-ip 时有效，redir-host（真实 IP 重定向模式）下无意义。
 *                               *    维持注释状态即默认禁用，等效于遵循 Mihomo 默认值 false。
-*                               * ⚠️ 隐私审计：启用时 cache.db 将记录域名与 Fake-IP的映射表，极端隐私需求可定期清理。
+*                               * ⚠️ 隐私审计：启用时 cache.db 将记录域名与 Fake-IP 的映射表，极端隐私需求可定期清理。
 
 * ⚠️ [deprecated] 此字段已被 Mihomo 标记为废弃，未来可能被内核移除。届时需迁移至节点级 `client-fingerprint` 或移除。
 global-client-fingerprint: chrome   * 🗑️ [deprecated] 全局 TLS 客户端指纹模拟预设，作为内核级全局默认值（节点未定义时的兜底赋值）。
 *                                   * 可选值: chrome / firefox / safari / iOS / android / edge / 360 / qq / random
 *                                   * 💡 random：启动时从指纹库随机抽取一个值并固定使用，非每连接随机切换。
-*                                   * 模拟指定客户端的 TLS 握手特征；实际效果依赖目标站点策略，不保证规避检测或验证码。
+*                                   * 模拟指定客户端的 TLS 握手特征；实际效果依赖目标站点策略，不保证绕过指纹检测或消除触发验证码。
 *                                   * 优先级：协议特定指纹（如 Reality）> 节点级 client-fingerprint > 全局（本字段）。
 *                                   * 仅在节点未声明 client-fingerprint 时生效，为最低优先级的全局兜底。
 *                                   * 直接拉取的机场订阅节点无法通过 Merge 注入节点级 client-fingerprint 字段，故本全局字段保留。
@@ -100,9 +100,8 @@ global-client-fingerprint: chrome   * 🗑️ [deprecated] 全局 TLS 客户端�
 * * --------------------------------------------------------------------------------------
 * * ⚠️ 【跨客户端兼容性警告】
 * *  本配置依赖 include-all 字段自动将订阅裸节点填充至 [节点选择] 组。
-* *  该字段由 Mihomo 内核实现，CVR 完整支持；但在 Stash / ClashX / OpenClash 等
-* *  客户端中该字段被静默跳过，[节点选择] 将成为空组，导致全局网络中断。
-* *  非 CVR 用户须启用下方 proxies: [] 行并以实际节点替换占位符，否则无法正常使用。
+* *  该字段由 Mihomo 内核实现，CVR 完整支持；但在 Stash / ClashX / OpenClash 等客户端中该字段被静默跳过，[节点选择] 将成为空组，导致全局网络中断。
+* *  非 CVR 用户须启用下方 proxies 行，将占位符替换为实际节点名，例如 proxies: [节点A, 节点B]
 * *  ⚠️ 继承的节点须为独立可用的底层节点；若订阅仅提供 relay 类型节点，因其依赖的代理链路未被包含在当前策略组中，将导致连接失效。
 * *
 * * 【proxy-groups 锚点组设计逻辑】
@@ -123,7 +122,7 @@ proxy-groups:
   - name: 节点选择    * 🛡️ 策略组锚点桩 | rules 规则段唯一关联策略组出口。 💡 硬编码固定策略组名，以确保此覆写配置文件的普适性。
                       * 【解耦指引】若需还原订阅原生分组，需将此 proxy-groups 段整体注释，必须同步将 rules 段的引用目标重映射至订阅源内置的原始策略名。
                       * 🔗【强关联约束】修改组名属于破坏性变更，必须同步更新所有 rules 引用（含代理出口规则行与 MATCH 行）。
-                      * ⚠️ 架构风险：若剥离此静态桩，切换订阅时将因组名不一致丧失“语义稳定性”，导致内核配置加载崩溃。
+                      * ⚠️ 架构风险：若剥离此静态桩，切换订阅时将因组名不一致丧失“语义稳定性”，导致内核配置加载报错。
     type: select      * ℹ️ 类型：手动选择，由用户在 UI 代理面板点击切换当前生效节点。
     include-all: true * ⚙️ Mihomo 内核支持字段：自动继承订阅内所有 outbound proxies 及 proxy sets
                       *    （proxy groups 及嵌套策略组均不在继承范围内），切换订阅后节点列表自动同步，无需手动维护 proxies 数组。
@@ -203,7 +202,7 @@ rule-providers:
                       * ℹ️ 远程地址：jsDelivr 官方 Cloudflare 节点，国内可达性优于 fastly 节点。
                       *    来源仓库：https://github.com/DustinWin/ruleset_geodata/blob/mihomo-ruleset/private.list
                       *    备用直链：https://github.com/DustinWin/ruleset_geodata/raw/refs/heads/mihomo-ruleset/private.mrs
-    path: "./rules/providers/private.mrs"
+    path: "./rules/providers/private.mrs" * 存储路径。规则集文件命名与规则集声明键值解耦
                       * ℹ️ 本地缓存路径：相对于 Mihomo 工作目录；路径须位于 Mihomo 允许写入的目录范围内。
                       * ⚠️ 若目录不存在或无写入权限：
                       *    · 部分内核版本可自动创建目录；部分环境（尤其 Windows 权限受限）会失败。
@@ -227,14 +226,14 @@ rule-providers:
   *                     * ℹ️ 远程地址：jsDelivr 官方 Cloudflare 节点，国内可达性优于 fastly 节点。
   *                     *    来源仓库：https://github.com/MetaCubeX/meta-rules-dat/tree/meta/geo/geoip
   *                     *    备用直链（jsDelivr 失效时）：https://github.com/MetaCubeX/meta-rules-dat/raw/meta/geo/geoip/private.mrs
-  *   path: "./rules/providers/lan_cidr.mrs"
+  *   path: "./rules/providers/lan_cidr.mrs" * 存储路径。规则集文件命名与规则集声明键值解耦
   *                     * ⚠️ 缓存落盘前提同 private：路径须位于 Mihomo 允许写入的目录范围内且有写入权限，
   *                     *    否则回退为内存缓存，每次启动重新下载。
   *   lazy: false       * ⚙️ 启动即加载，本地放行集属于核心路由，必须启动即就绪，不应启用懒加载。MRS 格式加载开销极小，无性能顾虑。
   *   interval: 604800  * ⏱️ 缓存有效期：604800 秒 = 7 天（内核运行时按 interval 周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取，不保证实时同步）。
   *                     *    列表内容基于 RFC 1918 等标准，结构极低频变动，设 7 天以减少不必要的远程拉取请求。
 
-  Advertising: * 🚫 应用广告拦截集
+  advertising: * 🚫 应用广告拦截集
     * 💡 数据源说明：基于 blackmatrix7/Advertising 完整广告域名集（非精简版），由 peiyingyao 每日自动构建并以 MRS 格式分发。
     *    原选用精简版时，主线程同步阻塞（I/O + Trie 构建）会导致内核无法响应前端 RPC 查询，这一超时风险在改用 MRS 格式后已消除，故直接使用完整版。
     type: http        * ℹ️ 类型：远程 HTTP 资源。
@@ -243,14 +242,14 @@ rule-providers:
     url: "https://testingcf.jsdelivr.net/gh/peiyingyao/Rule-for-OCD@master/rule/Clash/Advertising/Advertising_OCD_Domain.mrs"
                       *    来源仓库：https://github.com/peiyingyao/Rule-for-OCD/tree/master/rule/Clash/Advertising
                       *    备用直链：https://github.com/peiyingyao/Rule-for-OCD/raw/refs/heads/master/rule/Clash/Advertising/Advertising_OCD_Domain.mrs
-    path: "./rules/providers/Advertising.mrs"
+    path: "./rules/providers/advertising.mrs" * 存储路径。规则集文件命名与规则集声明键值解耦
     lazy: true        * ⚙️ 懒加载：可容忍启动初期的短暂穿透窗口。规则集在首次被求值时异步加载，加载完成前到达该规则位置的连接将因 Trie 为空而穿透至后续规则。
     interval: 86400   * ⏱️ 缓存有效期：86400 秒 = 24 小时（内核运行时按该周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取）。上游规则集变动较频繁，设较短缓存周期以跟进更新。
 
   threat: * 🚫 威胁域名拦截集（追踪器 / 恶意软件 / C2 命令与控制域名）
-    * 💡threat 与 Advertising 的语义区分（两者互补，非替代关系）：
+    * 💡threat 与 advertising 的语义区分（两者互补，非替代关系）：
     *   threat：        恶意特征（恶意软件 / 追踪器 / C2 命令与控制域名） → 安全防护
-    *   Advertising：   广告域名 → 体验优化
+    *   advertising：   广告域名 → 体验优化
     *
     *   threat 数据来源分别由 DustinWin 基于 privacy-protection-tools/anti-AD、peiyingyao 基于 blackmatrix7/EasyPrivacy 每日自动构建并以 MRS 格式分发。
     type: http        * ℹ️ 类型：远程 HTTP 资源。
@@ -264,7 +263,7 @@ rule-providers:
     * url: "https://testingcf.jsdelivr.net/gh/peiyingyao/Rule-for-OCD@master/rule/Clash/EasyPrivacy/EasyPrivacy_OCD_Domain.mrs"
                       *    来源仓库：https://github.com/peiyingyao/Rule-for-OCD/tree/master/rule/Clash/EasyPrivacy
                       *    备用直链：https://github.com/peiyingyao/Rule-for-OCD/raw/refs/heads/master/rule/Clash/EasyPrivacy/EasyPrivacy_OCD_Domain.mrs
-    path: "./rules/providers/threat.mrs"
+    path: "./rules/providers/threat.mrs" * 存储路径。规则集文件命名与规则集声明键值解耦
     lazy: true        * ⚙️ 懒加载：可容忍启动初期的短暂穿透窗口。规则集在首次被求值时异步加载，加载完成前到达该规则位置的连接将因 Trie 为空而穿透至后续规则。
     interval: 86400   * ⏱️ 缓存有效期：86400 秒 = 24 小时（内核运行时按该周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取）。上游规则集变动较频繁，设较短缓存周期以跟进更新。
 
@@ -277,7 +276,7 @@ rule-providers:
     url: "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/cn.mrs"
                       *    来源仓库：https://github.com/MetaCubeX/meta-rules-dat/tree/meta/geo/geosite
                       *    备用直链（jsDelivr 失效时）：https://github.com/MetaCubeX/meta-rules-dat/raw/meta/geo/geosite/cn.mrs
-    path: "./rules/providers/cn.mrs"
+    path: "./rules/providers/cn.mrs" * 存储路径。规则集文件命名与规则集声明键值解耦
     lazy: false       * ⚙️ 启动即加载。MRS 直接内存映射，无 Trie 构建阶段，大规则集下的 IPC 超时风险不再存在，无需懒加载权衡。
     interval: 86400   * ⏱️ 缓存有效期：86400 秒 = 24 小时（内核运行时按该周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取）。上游规则集变动较频繁，设较短缓存周期以跟进更新。
 
@@ -292,11 +291,11 @@ rule-providers:
     url: "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/geolocation-!cn.mrs"
                       *    来源仓库：https://github.com/MetaCubeX/meta-rules-dat/tree/meta/geo/geosite
                       *    备用直链（jsDelivr 失效时）：https://github.com/MetaCubeX/meta-rules-dat/raw/meta/geo/geosite/geolocation-!cn.mrs
-    path: "./rules/providers/non-cn.mrs"
+    path: "./rules/providers/non-cn.mrs" * 存储路径。规则集文件命名与规则集声明键值解耦
     lazy: false       * ⚙️ 启动即加载，代理核心分流规则必须启动即就绪。MRS 格式加载开销极小，无性能顾虑。
     interval: 86400   * ⏱️ 缓存有效期：86400 秒 = 24 小时（内核运行时按该周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取）。境外域名列表变动较频繁，设较短缓存周期以跟进更新。
 
-  amazon: * 🔓 亚马逊购物常用域名集 (ojibk/rules amazon.mrs)
+  amazon:             * 🔓 亚马逊购物常用域名集 (ojibk/rules amazon.mrs)
     * 💡 收录亚马逊全球零售站点 + 静态图片资产 + 广告与前端组件库 + 卖家及物流体系规则集（不含 AWS 基础云，防止 AWS 流量被误送入代理出口）
     *    规则集中收录的广告与前端组件域名，可能已被前置的威胁阻断集以 REJECT 动作优先命中，属于预期行为。
     * 🔍 若发现购物车/结账流程异常，检查连接日志中 Amazon 域名是否被 REJECT；可在 skip-domain 或 rules 前添加精确放行规则。
@@ -306,7 +305,7 @@ rule-providers:
     format: mrs       * ℹ️ 格式：MRS 二进制格式
     url: "https://testingcf.jsdelivr.net/gh/ojibk/rules@main/amazon.mrs"
                       *    备用直链：https://raw.githubusercontent.com/ojibk/rules/main/amazon.mrs
-    path: "./rules/providers/amazon.mrs"
+    path: "./rules/providers/amazon.mrs" * 存储路径。规则集文件命名与规则集声明键值解耦
     lazy: true        * ⚙️ 专用规则集，使用率低。故采用懒加载作为权衡。无缓存时会有穿透至后续规则的风险，属已知取舍。
     interval: 604800  * ⏱️ 缓存有效期：604800 秒 = 7 天（内核运行时按该周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取，不保证实时同步）。
 
@@ -326,17 +325,14 @@ rule-providers:
 * * 【规则分层设计】
 * *  规则链按误判风险由低到高排列：
 * *
-* *  ▌本地放行集：   私有/保留域名与局域网 IP 段，命中后动作绝对确定（DIRECT），无误判风险。
-* *                 注意：private / lan_cidr 同为远程规则集，首次加载失败时条目数为 0；
-* *                 GEOIP,PRIVATE 作为 IP 层兜底，在规则集失效时仍可确定性覆盖私有网段。
-* *                 本地放行集以域名与 IP 段双维度精确匹配，归属地映射为 IP 级统计性补盲，
+* *  ▌本地放行集：   私有/保留域名与局域网 IP 段，命中后动作绝对确定（DIRECT），无误判风险。注意：private / lan_cidr 同为远程规则集，首次加载失败时条目数为 0；
+* *                 GEOIP,PRIVATE 作为 IP 层兜底，在规则集失效时仍可确定性覆盖私有网段。本地放行集以域名与 IP 段双维度精确匹配，归属地映射为 IP 维度作统计性补充，
 * *                 其中 lan_cidr 与 GEOIP,PRIVATE 在 RFC 1918 私有 IP 段存在重叠，两者互为补充属有意冗余。
 * *  ▌威胁阻断集：   远程规则集 REJECT，依赖加载状态，加载失败静默跳过。
 * *                 💡 REJECT vs REJECT-DROP 选型原则：
 * *                 REJECT      → 主动拒绝连接（连接立即失败），客户端立刻感知错误并终止连接尝试，无启动卡顿。
 * *                 REJECT-DROP → 静默丢弃数据包。TCP 场景下因报文被静默丢弃、无 RST 响应，触发 TCP 重传直至应用层超时；UDP 场景下直接丢包。
-* *                 实际行为依赖协议（TCP/UDP）及客户端实现。
-* *                 适用场景：防止进程感知被拦截后快速切换备用链路或频繁重试。
+* *                 实际行为依赖协议（TCP/UDP）及客户端实现。适用场景：防止进程感知被拦截后快速切换备用链路或频繁重试。
 * *                 ⚡ 代价：软件启动时若命中 REJECT-DROP 规则，会有明显卡顿；如遇此情况，可改为 REJECT。
 * *  ▌域名分流集：   远程规则集分流，依赖加载状态。
 * *                 cn 与 non-cn 可能存在少量重叠域名，并非严格互斥：极少数域名可能同时被两个列表收录，实际行为由规则顺序决定；cn 在前是有意为之的优先级设计。
@@ -368,7 +364,7 @@ rules:
   * - RULE-SET,lan_cidr,DIRECT,no-resolve * 🔓 局域网私有 IP 段 → 直连，private 的 IP 层补丁，覆盖 IPv4 私有网段及 IPv6 ULA 等保留地址。
 
   * ▌威胁阻断集 — 拦截广告、遥测、恶意类流量
-  - RULE-SET,Advertising,REJECT         * 🚫 主流应用广告域名 → 拒绝，完整广告域名集。
+  - RULE-SET,advertising,REJECT         * 🚫 主流应用广告域名 → 拒绝，完整广告域名集。
   - RULE-SET,threat,REJECT              * 🚫 恶意特征域名拦截集 → 拒绝，追踪器/恶意软件/C2 域名。
 
   * ▌域名分流集 — cn 规则集在前确保国内域名优先命中
@@ -703,7 +699,7 @@ rules:
 * * MetaCubeX、peiyingyao、DustinWin 源（当前主力来源）
 * *   基于各规则集数据源的 mrs 分支，通常每日自动构建。通过 jsDelivr CF 节点分发。
 * *   提供 MRS 二进制格式（format: mrs），覆盖 geo/geosite 与 geo/geoip 两大类别。
-* *   本配置 private / lan_cidr / Advertising / threat / cn / non-cn
+* *   本配置 private / lan_cidr / advertising / threat / cn / non-cn
 * *
 * * Loyalsoldier 源（已迁移，仅作历史参考）
 * *   github.com/Loyalsoldier/clash-rules @release 分支。
@@ -731,7 +727,7 @@ rules:
 * * 【广告拦截规则集选型：Advertising.mrs 替代 AdvertisingLite.list】
 * *  原选用 AdvertisingLite 精简版的原因：完整版条目数量庞大，text 格式加载时 IPC 可能超时。
 * *  改用 MRS 格式后，加载直接内存映射，主线程同步阻塞（Trie 构建）导致内核无法响应前端 RPC 查询的超时风险消除，故升级为完整版 Advertising.mrs。
-* *  如需还原为精简版语义，可自行转换：mihomo convert-ruleset domain text AdvertisingLite_Domain.txt AdvertisingLite_Domain.mrs
+* *  如需还原为精简版语义，可自行转换：verge-mihomo convert-ruleset domain text AdvertisingLite_Domain.txt AdvertisingLite_Domain.mrs
 * *
 * * 【懒加载策略分层】
 * *  · 核心路由规则集（本地放行集 / 域名分流集 / IP 分流集）：lazy: false，必须启动即就绪。MRS 直接内存映射，无 Trie 构建阶段，原有的懒加载性能取舍不再必要。
