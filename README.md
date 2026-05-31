@@ -1,4 +1,4 @@
-**完美封版，后续维护转移至 https://github.com/ojibk/clash-verge-rev-Script**
+**完美封版，后续维护迁移至 https://github.com/ojibk/Clash-Script_Merge**
 
 * * Clash-Merge 全局扩展覆写配置 · 锚点组与规则链 v260531
 * * --------------------------------------------------------------------------------------
@@ -8,9 +8,9 @@
 * *   Linux   : ~/.config/io.github.clash-verge-rev.clash-verge-rev/profiles
 * * ======================================================================================
 * * 【运行范式】
-* *  本文件基于锚点组架构，负责静态路由规则链（本地放行集 → 威胁阻断集 → 域名分流集 → 归属地映射 → 无条件兜底）。
+* *  本文件基于锚点组架构，负责静态路由规则链（本地放行集 → 综合拦截集 → 域名分流集 → 归属地映射 → 无条件兜底）。
 * *  本配置支持独立运行；若同时启用扩展脚本，由动态注入层在覆写配置合并完成后、内核执行规则前注入规则覆盖修改，注入的规则在流量匹配上优先于本文件的静态规则链，最终合并入生效配置。
-* *  配置处理流：订阅 → Merge Config → Script 修改 → 最终配置 → Mihomo rules 执行
+* *  配置处理流：订阅 → Merge Config 合并 → Script 修改 → 最终配置 YAML → CVR 二次注入覆盖 dns/tun → Mihomo 执行
 * *  职责分工：
 * *    rule-providers → Map 类型（键值映射表）：键值对合并——同名键以本文件为准覆写，其余键保留订阅原值
 * *    proxy-groups   → 必须声明固定锚点组，rules 出口的确定性保障
@@ -71,8 +71,8 @@ sniffer:
     QUIC:
       ports: [443, 8443]        * ℹ️ QUIC（HTTP/3）嗅探端口，与 TLS 端口保持一致。
   * override-destination 未启用（默认 false）：该字段会将连接目标强制替换为嗅探域名，行为激进，部分绑定 IP 的 HTTPS 服务会因目标被替换而异常，故保守不启用。
-  * 但是，当应用程序使用 IP 直连但 SNI 泄露了域名时，启用此字段可让规则匹配基于嗅探到的域名而非原始 IP，从而让域名规则集命中该流量；
-  * 在 parse-pure-ip: true 的配合下，是一个有价值的精度提升选项。
+  * 但是，当应用程序使用 IP 直连但 SNI 字段暴露了目标域名时，启用此字段可让规则匹配基于嗅探到的域名而非原始 IP，从而让域名规则集命中该流量；
+  * 在 parse-pure-ip: true 的配合下，规则命中率提升。
   * skip-domain 未配置：如发现特定设备管理域名（如米家云等 IoT 平台）因嗅探错误匹配，可在此添加 skip-domain 排除列表。
 
 profile:
@@ -114,7 +114,7 @@ global-client-fingerprint: chrome   * 🗑️ [deprecated] 全局 TLS 客户端�
 * *  ⚠️ 若不声明此块，切换订阅时一旦订阅不含该组名，Mihomo（代理内核）启动即报错 proxy XXX not found，rules 中所有指向该组的条目失效。
 * *
 * * 【已知代价】
-* *  proxy-groups 为 Array 类型，声明即触发全量替换，订阅原有所有策略组被丢弃。
+* *  proxy-groups 为 Array 类型（有序列表），声明即触发全量替换，订阅原有所有策略组被丢弃。
 * *  代理面板仅保留 [节点选择] 一个出口，由用户手动切换节点。订阅原有精细策略组（自动选择 / ChatGPT / Netflix 等）将完全消失。
 * *  若需同时保留订阅策略组与锚点组，须注释掉本文件的 proxy-groups 段，改由脚本主导。
 
@@ -180,7 +180,7 @@ proxy-groups:
 * *
 * *  ⚠️ 规则集失效退化路径：
 * *  加载失败 → 优先使用缓存；首次启动且下载失败 → 该规则集条目数为 0。
-* *  当威胁阻断集与域名分流集均为 0 条时，规则链穿透路径为：本地放行集 → 归属地映射 → 无条件兜底（MATCH）。
+* *  当综合拦截集与域名分流集均为 0 条时，规则链穿透路径为：本地放行集 → 归属地映射 → 无条件兜底（MATCH）。
 * *  ⚡ 当 MATCH 设置为代理出口时效果：几乎全部流量进入代理出口（回退为近似全局代理模式），用户无明显提示。建议通过日志或 CVR「规则集」界面定期检查规则集加载状态。
 * *
 * *  使用说明：
@@ -233,39 +233,50 @@ rule-providers:
   *   interval: 604800  * ⏱️ 缓存有效期：604800 秒 = 7 天（内核运行时按 interval 周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取，不保证实时同步）。
   *                     *    列表内容基于 RFC 1918 等标准，结构极低频变动，设 7 天以减少不必要的远程拉取请求。
 
-  advertising: * 🚫 应用广告拦截集
-    * 💡 数据源说明：基于 blackmatrix7/Advertising 完整广告域名集（非精简版），由 peiyingyao 每日自动构建并以 MRS 格式分发。
-    *    原选用精简版时，主线程同步阻塞（I/O + Trie 构建）会导致内核无法响应前端 RPC 查询，这一超时风险在改用 MRS 格式后已消除，故直接使用完整版。
-    type: http        * ℹ️ 类型：远程 HTTP 资源。
-    behavior: domain  * ℹ️ 行为：域名模式，MRS 直接内存映射已构建的后缀匹配树（Domain Trie）。
-    format: mrs       * ℹ️ 格式：MRS 二进制格式，加载时直接映射，跳过 YAML/Text 反序列化与 Trie 构建，二进制解析开销极低。
-    url: "https://testingcf.jsdelivr.net/gh/peiyingyao/Rule-for-OCD@master/rule/Clash/Advertising/Advertising_OCD_Domain.mrs"
-                      *    来源仓库：https://github.com/peiyingyao/Rule-for-OCD/tree/master/rule/Clash/Advertising
-                      *    备用直链：https://github.com/peiyingyao/Rule-for-OCD/raw/refs/heads/master/rule/Clash/Advertising/Advertising_OCD_Domain.mrs
-    path: "./rules/providers/advertising.mrs" * 存储路径。规则集文件命名与规则集声明键值解耦
-    lazy: true        * ⚙️ 懒加载：可容忍启动初期的短暂穿透窗口。规则集在首次被求值时异步加载，加载完成前到达该规则位置的连接将因 Trie 为空而穿透至后续规则。
-    interval: 86400   * ⏱️ 缓存有效期：86400 秒 = 24 小时（内核运行时按该周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取）。上游规则集变动较频繁，设较短缓存周期以跟进更新。
+  * 拦截类规则集数据来源分别由 DustinWin 基于 privacy-protection-tools/anti-AD、peiyingyao 基于 blackmatrix7/EasyPrivacy 每日自动构建并以 MRS 格式分发。
+  * 💡 anti-ad 与 threat 以及 advertising 的语义区分（互为补充，非替代关系，可按需启用）：
+  *   anti-ad：       广告 / 跟踪 / 隐私 / 恶意软件 / 挖矿 → 隐私及安全防护
+  *   threat：        恶意特征（恶意软件 / 追踪器 / C2 命令与控制域名） → 安全防护
+  *   advertising：   广告域名 → 体验优化
+  
+  * advertising: * 🚫 广告拦截集
+  *   * 💡 数据源说明：基于 blackmatrix7/Advertising 完整广告域名集（非精简版），由 peiyingyao 每日自动构建并以 MRS 格式分发。
+  *   *    原选用精简版时，主线程同步阻塞（I/O + Trie 构建）会导致内核无法响应前端 RPC 查询，这一超时风险在改用 MRS 格式后已消除，故直接使用完整版。
+  *   type: http        * ℹ️ 类型：远程 HTTP 资源。
+  *   behavior: domain  * ℹ️ 行为：域名模式，MRS 直接内存映射已构建的后缀匹配树（Domain Trie）。
+  *   format: mrs       * ℹ️ 格式：MRS 二进制格式，加载时直接映射，跳过 YAML/Text 反序列化与 Trie 构建，二进制解析开销极低。
+  *   url: "https://testingcf.jsdelivr.net/gh/peiyingyao/Rule-for-OCD@master/rule/Clash/Advertising/Advertising_OCD_Domain.mrs"
+  *                     *    来源仓库：https://github.com/peiyingyao/Rule-for-OCD/tree/master/rule/Clash/Advertising
+  *                     *    备用直链：https://github.com/peiyingyao/Rule-for-OCD/raw/refs/heads/master/rule/Clash/Advertising/Advertising_OCD_Domain.mrs
+  *   path: "./rules/providers/advertising.mrs" * 存储路径。规则集文件命名与规则集声明键值解耦
+  *   lazy: true        * ⚙️ 懒加载：可容忍启动初期的短暂穿透窗口。规则集在首次被求值时异步加载，加载完成前到达该规则位置的连接将因 Trie 为空而穿透至后续规则。
+  *   interval: 86400   * ⏱️ 缓存有效期：86400 秒 = 24 小时（内核运行时按该周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取）。上游规则集变动较频繁，设较短缓存周期以跟进更新。
 
-  threat: * 🚫 威胁域名拦截集（追踪器 / 恶意软件 / C2 命令与控制域名）
-    * 💡 threat 与 advertising 的语义区分（两者互补，非替代关系）：
-    *   threat：        恶意特征（恶意软件 / 追踪器 / C2 命令与控制域名） → 安全防护
-    *   advertising：   广告域名 → 体验优化
-    *
-    *   threat 数据来源分别由 DustinWin 基于 privacy-protection-tools/anti-AD、peiyingyao 基于 blackmatrix7/EasyPrivacy 每日自动构建并以 MRS 格式分发。
+  anti-ad: * 🚫 综合拦截集（广告 / 跟踪 / 隐私 / 恶意软件 / 挖矿）
+    * 💡 主用：基于 privacy-protection-tools/anti-AD 转换，由 DustinWin 每日自动构建并以 MRS 格式分发。
+    *    覆盖范围：广告、跟踪器、隐私收集、恶意域名、挖矿。
     type: http        * ℹ️ 类型：远程 HTTP 资源。
     behavior: domain  * ℹ️ 行为：域名模式，MRS 直接内存映射已构建的后缀匹配树（Domain Trie）。
     format: mrs       * ℹ️ 格式：MRS 二进制格式，加载时直接映射，跳过 YAML/Text 反序列化与 Trie 构建，二进制解析开销极低。
-    * 主用源：
     url: "https://testingcf.jsdelivr.net/gh/DustinWin/ruleset_geodata@mihomo-ruleset/ads.mrs"
                       *    来源仓库：https://github.com/DustinWin/ruleset_geodata/tree/mihomo-ruleset
                       *    备用直链：https://github.com/DustinWin/ruleset_geodata/raw/refs/heads/mihomo-ruleset/ads.mrs
-    * 备用源：
-    * url: "https://testingcf.jsdelivr.net/gh/peiyingyao/Rule-for-OCD@master/rule/Clash/EasyPrivacy/EasyPrivacy_OCD_Domain.mrs"
-                      *    来源仓库：https://github.com/peiyingyao/Rule-for-OCD/tree/master/rule/Clash/EasyPrivacy
-                      *    备用直链：https://github.com/peiyingyao/Rule-for-OCD/raw/refs/heads/master/rule/Clash/EasyPrivacy/EasyPrivacy_OCD_Domain.mrs
-    path: "./rules/providers/threat.mrs" * 存储路径。规则集文件命名与规则集声明键值解耦
+    path: "./rules/providers/anti-ad.mrs" * 存储路径。规则集文件命名与规则集声明键值解耦
     lazy: true        * ⚙️ 懒加载：可容忍启动初期的短暂穿透窗口。规则集在首次被求值时异步加载，加载完成前到达该规则位置的连接将因 Trie 为空而穿透至后续规则。
     interval: 86400   * ⏱️ 缓存有效期：86400 秒 = 24 小时（内核运行时按该周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取）。上游规则集变动较频繁，设较短缓存周期以跟进更新。
+
+  * threat: * 🚫 威胁阻断集（范围未完全覆盖：广告 / 追踪器 / 隐私 / 恶意软件 / 挖矿 / C2 命令与控制域名）
+  *   type: http        * ℹ️ 类型：远程 HTTP 资源。
+  *   behavior: domain  * ℹ️ 行为：域名模式，MRS 直接内存映射已构建的后缀匹配树（Domain Trie）。
+  *   format: mrs       * ℹ️ 格式：MRS 二进制格式，加载时直接映射，跳过 YAML/Text 反序列化与 Trie 构建，二进制解析开销极低。
+  *   * 💡 备用：基于 blackmatrix7/EasyPrivacy 转换，由 peiyingyao 每日自动构建并以 MRS 格式分发（AdBlock Plus EasyPrivacy，仅抽取DOMAIN-SUFFIX类型）。
+  *   *    覆盖范围：广告、跟踪器、隐私收集。
+  *   url: "https://testingcf.jsdelivr.net/gh/peiyingyao/Rule-for-OCD@master/rule/Clash/EasyPrivacy/EasyPrivacy_OCD_Domain.mrs"
+  *                     *    来源仓库：https://github.com/peiyingyao/Rule-for-OCD/tree/master/rule/Clash/EasyPrivacy
+  *                     *    备用直链：https://github.com/peiyingyao/Rule-for-OCD/raw/refs/heads/master/rule/Clash/EasyPrivacy/EasyPrivacy_OCD_Domain.mrs
+  *   path: "./rules/providers/threat.mrs" * 存储路径。规则集文件命名与规则集声明键值解耦
+  *   lazy: true        * ⚙️ 懒加载：可容忍启动初期的短暂穿透窗口。规则集在首次被求值时异步加载，加载完成前到达该规则位置的连接将因 Trie 为空而穿透至后续规则。
+  *   interval: 86400   * ⏱️ 缓存有效期：86400 秒 = 24 小时（内核运行时按该周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取）。上游规则集变动较频繁，设较短缓存周期以跟进更新。
 
   cn: * 🔓 国内域名直连集
     * 💡 收录国内主流及长尾域名，覆盖局限：小众 / 地区性 / 企业内部域名仍可能不在列表内，由后续归属地映射（GEOIP,CN,DIRECT,no-resolve）以 IP 维度补盲。
@@ -295,10 +306,10 @@ rule-providers:
     lazy: false       * ⚙️ 启动即加载，代理核心分流规则必须启动即就绪。MRS 格式加载开销极小，无性能顾虑。
     interval: 86400   * ⏱️ 缓存有效期：86400 秒 = 24 小时（内核运行时按该周期后台定时拉取；重启后亦检测缓存是否过期并重新拉取）。境外域名列表变动较频繁，设较短缓存周期以跟进更新。
 
-  amazon:             * 🔓 亚马逊购物常用域名集 (ojibk/rules amazon.mrs)
+  amazon: * 🔓 亚马逊购物常用域名集 (ojibk/rules amazon.mrs)
     * 💡 收录亚马逊全球零售站点 + 静态图片资产 + 广告与前端组件库 + 卖家及物流体系规则集（不含 AWS 基础云，防止 AWS 流量被误送入代理出口）。
-    *    规则集中收录的广告与前端组件域名，可能已被前置的威胁阻断集以 REJECT 动作优先命中，属于预期行为。
-    * 🔍 若发现购物车/结账流程异常，检查连接日志中 Amazon 域名是否被 REJECT；可在 skip-domain 或 rules 前添加精确放行规则。
+    *    规则集中收录的广告与前端组件域名，可能已被前置的综合拦截集以 REJECT 动作优先命中，属于预期行为。
+    * 🔍 若发现购物车/结账流程异常，检查连接日志中 Amazon 域名是否被 REJECT；可在 skip-domain (sniffer 的子字段) 或 rules 前添加精确放行规则。
     *    该文件已由上游仓库预转换；若需本地生成，可将原文件置于内核目录下，在终端中执行转换命令：.\verge-mihomo convert-ruleset domain text amazon.txt amazon.mrs
     type: http        * ℹ️ 类型：远程 HTTP 资源。
     behavior: domain  * ℹ️ 行为：域名模式，MRS 直接内存映射已构建的后缀匹配树（Domain Trie）。
@@ -328,7 +339,7 @@ rule-providers:
 * *  ▌本地放行集：   私有/保留域名与局域网 IP 段，命中后动作绝对确定（DIRECT），无误判风险。注意：private / lan_cidr 同为远程规则集，首次加载失败时条目数为 0；
 * *                 GEOIP,PRIVATE 作为 IP 层兜底，在规则集失效时仍可确定性覆盖私有网段。本地放行集以域名与 IP 段双维度精确匹配，归属地映射为 IP 维度作统计性补充，
 * *                 其中 lan_cidr 与 GEOIP,PRIVATE 在 RFC 1918 私有 IP 段存在重叠，两者互为补充属有意冗余。
-* *  ▌威胁阻断集：   远程规则集 REJECT，依赖加载状态，加载失败静默跳过。
+* *  ▌综合拦截集：   远程规则集 REJECT，依赖加载状态，加载失败静默跳过。
 * *                 💡 REJECT vs REJECT-DROP 选型原则：
 * *                 REJECT      → 主动拒绝连接（连接立即失败），客户端立刻感知错误并终止连接尝试，无启动卡顿。
 * *                 REJECT-DROP → 静默丢弃数据包。TCP 场景下因报文被静默丢弃、无 RST 响应，触发 TCP 重传直至应用层超时；UDP 场景下直接丢包。
@@ -363,20 +374,19 @@ rules:
   - RULE-SET,private,DIRECT             * 🔓 私有/保留域名 → 直连，匹配 localhost / .local / router.asus.com 等，不经代理。
   * - RULE-SET,lan_cidr,DIRECT,no-resolve * 🔓 局域网私有 IP 段 → 直连，private 的 IP 层补丁，覆盖 IPv4 私有网段及 IPv6 ULA 等保留地址。
 
-  * ▌威胁阻断集 — 拦截广告、遥测、恶意类流量
-  - RULE-SET,advertising,REJECT         * 🚫 主流应用广告域名 → 拒绝，完整广告域名集。
-  - RULE-SET,threat,REJECT              * 🚫 恶意特征域名拦截集 → 拒绝，追踪器/恶意软件/C2 域名。
+  * ▌综合拦截集 — 拦截广告、遥测、恶意类流量
+  - RULE-SET,anti-ad,REJECT             * 🚫 综合拦截域名 → 拒绝，广告过滤及隐私保护。
+  * - RULE-SET,advertising,REJECT         * 🚫 主流广告域名 → 拒绝，广告过滤。
+  * - RULE-SET,threat,REJECT              * 🚫 恶意特征域名拦截集 → 拒绝，追踪器/恶意软件/C2 安全防护。
 
   * ▌域名分流集 — cn 规则集在前确保国内域名优先命中
-  - RULE-SET,cn,DIRECT                  * 🔓 国内主流域名 → 直连，基于 Domain Trie 极速命中。
-                                        *    精确域名匹配直接放行，无需经过 GeoIP 推断，自然规避 CDN 多归属场景下的归属误判；
-                                        *    小众域名盲区由归属地映射层（GEOIP,CN）补盲覆盖。
   - RULE-SET,amazon,DIRECT              * 🔓 个人扩展：亚马逊购物常用域名集 → 直连，基于 Domain Trie 极速命中。
+  - RULE-SET,cn,DIRECT                  * 🔓 国内主流域名 → 直连，基于 Domain Trie 极速命中。精确域名匹配直接放行，无需经过 GeoIP 推断，自然规避 CDN 归属误判；
+                                        *    小众域名盲区由归属地映射层（GEOIP,CN）补盲覆盖。
   - RULE-SET,non-cn,节点选择             * 🛡️ 境外代理域名 → 送入锚点组 [节点选择]，经用户所选代理节点出站。
 
   * ▌归属地映射 — GeoIP 库基于静态 IP 注册数据进行归属地查询推断，不代表实际物理位置，在 CDN / Anycast（任播）调度下存在不可避免的归属地误差。
-  - GEOIP,PRIVATE,DIRECT,no-resolve     * 🔓 私有 IP 地址段 → 直连（RFC 1918，私有 IP 地址分配标准），
-                                        *    绝对确定集合，基于 RFC 标准，无误判风险；故排于 CN（统计性集合）规则之前；与本地放行集形成双重保障。
+  - GEOIP,PRIVATE,DIRECT,no-resolve     * 🔓 私有 IP 地址段（RFC 1918 分配标准） → 直连，绝对确定集合，无误判风险；故排于 CN（统计性集合）规则之前；与本地放行集形成双重保障。
   - GEOIP,CN,DIRECT,no-resolve          * 🔓 国内 IP 段 → 直连（统计性集合，基于 IP 注册归属弥补域名长尾盲区；存在 CDN 动态调度导致的归属地误判风险）。
                                         * ⚠️ 误判方向A（漏直连）：未被域名分流集收录的国内企业内网域名、私有 SaaS 将走代理出口（MATCH 兜底指定代理时）；
                                         * ⚠️ 误判方向B（误直连）：CDN/Anycast 场景下境外服务可能被 GeoIP 归为 CN，直连出站。
@@ -384,7 +394,7 @@ rules:
 
   * ▌无条件兜底 — 承接所有未命中流量，MATCH 保证规则链始终有出口锚点
   * ⚠️ 若所有 rule-providers 加载失败且无缓存，将回退为近似全局代理/直连模式（取决于 MATCH 兜底出口设置），用户无明显提示。
-  * ⚙️ 兜底出口的配置选项（取消注释其中一行，需重载配置生效）：【运行模式】以未被注释的 MATCH 规则为准。
+  * ⚙️ 兜底出口的配置选项（取消注释其中一行，需重载配置生效）：当前运行模式以未被注释的 MATCH 规则为准。
   * ⚠️ 严禁同时取消两行注释——MATCH 命中即停止，后置行永远不会被求值到，静默失效。若同时取消注释（即同时启用两行），兜底为直连而非代理。
   - MATCH,DIRECT      * 🔓 兜底直连：未命中流量直连出站，适用于国内为主的使用场景。
   * - MATCH,节点选择      * 🛡️ 兜底代理：未命中流量送入锚点组 [节点选择]，适用于 Unknown → Proxy 立场：宁可错绕（走代理），不可错放（直连可能导致隐私泄露）。
@@ -394,7 +404,7 @@ rules:
 * * 【系统设计哲学】
 * *  本配置的设计立场：匹配层允许局部失效，规则链末端必须锚定于一个必然存在的策略组实体，若该实体内部无可用节点，则遵循 Fail-Fast 原则暴露连接失败，拒绝静默降级。
 * *  · 规则匹配允许降级：rule-providers 可失效；GeoIP（IP 地理归属库）准确率非 100%；
-* *    此外，在 DNS（域名解析系统）被污染或劫持的网络环境下，经由 UDP 53 端口（或 TCP/53）获取的解析结果可能不可信。
+* *    此外，在 DNS（域名解析系统）被污染或劫持的网络环境下，经由 UDP/TCP 53 端口获取的解析结果可能不可信。
 * *    MATCH 确保流量总是被定向至一个确定的策略组（锚点），不依赖外部 fallback；但若该策略组内无任何可用节点，则按 Fail-Fast 机制直接暴露连接失败，不会静默降级或回退。
 * *  · 总体取向：容错优先，而非精确优先。
 * *    兜底 = 确定性终点，流量必达；回退 = 降级策略，当主路径失败时切换备用路径。本配置的 MATCH 是兜底而非回退——它不是在主路径失败后出现，而是规则链的永久终点。
@@ -468,7 +478,7 @@ rules:
 * *
 * * 静态路由规则链（Static Routing Rule Chain）
 * *   本文件（Merge Config）实现的规则链，由固定配置描述，无运行时动态逻辑。
-* *   按误判风险由低到高排列：本地放行集 → 威胁阻断集 → 域名分流集 → 归属地映射 → 无条件兜底。
+* *   按误判风险由低到高排列：本地放行集 → 综合拦截集 → 域名分流集 → 归属地映射 → 无条件兜底。
 * *
 * * 自完备规则链（Self-Contained Rule Chain）
 * *   rules 段必须独立覆盖所有流量场景，不依赖订阅原有 rules。
@@ -518,7 +528,7 @@ rules:
 * *
 * * RULE-SET（规则集匹配指令）
 * *   rules 段中引用 rule-providers 的指令格式：RULE-SET,<规则集名>,<动作>
-* *   加载失败时条目数为 0，匹配失败，流量滑落，不报错。
+* *   加载失败不中止启动流程，规则集条目数为 0，会在日志中产生警告。
 * *
 * * GEOIP（IP 地理归属匹配）
 * *   ⚠️ GeoIP ≠ 真实地理位置。GeoIP 基于 IP 区块注册数据推断地理归属，而非检测流量实际经过的物理节点位置，在 CDN / Anycast（任播）调度下存在不可避免的归属地误差。
@@ -549,8 +559,8 @@ rules:
 * *   适用场景：广告域名拦截，客户端立刻感知错误并终止连接尝试，无卡顿。
 * *
 * * REJECT-DROP（静默丢包拦截）
-* *   不响应，静默丢弃数据包，客户端等待超时（因操作系统和客户端实现而异，通常数秒至数分钟，Windows 通常 15–30 秒）后感知失败（超时表现依赖底层协议与客户端实现）。
-* *   适用场景：防止进程感知被拦截后快速切换备用链路或频繁重试。
+* *   不响应，静默丢弃数据包。TCP 场景：客户端因 SYN 重传超时感知失败（因操作系统和客户端实现而异，通常数秒至数分钟，Win 通常 15–30 秒）。
+* *   UDP 场景：无传输层超时机制，超时完全由应用层策略决定，行为差异极大。适用场景：防止进程感知被拦截后快速切换备用链路或频繁重试。
 * *   ⚡ 代价：被命中的软件在启动阶段可能出现明显卡顿，谨慎使用。
 * *
 * * ──────────────────────────────────────────────────────────────────────────────────────
@@ -574,7 +584,7 @@ rules:
 * *   匹配时逐行扫描，时间复杂度与列表长度线性相关，不适用于大规模列表。
 * *   本配置所选源文件均为纯列表，不使用此模式。
 * *
-* *   AFE_PATHS（安全路径环境变量）
+* *   SAFE_PATHS（安全路径环境变量）
 * *   Mihomo 官方定义的环境变量，用于向内核声明允许写入缓存文件的额外目录范围（见 v1.19.6 等多版本 Release Notes）。
 * *   若需将 rule-providers 缓存写入工作目录外的路径，须通过系统环境变量设置此项。
 * *
@@ -591,8 +601,8 @@ rules:
 * *   搭配 no-resolve + MATCH 代理兜底可规避污染环境下的 GeoIP 误判（适用于 Unknown → Proxy 立场）。
 * *
 * * Fake-IP（虚假 IP DNS 模式）
-* *   DNS 模式之一。内核对域名请求立即返回一个虚假本地 IP，应用程序连接该虚假 IP
-* *   后，内核截获并将真实域名通过代理协议传递给出口节点，无需等待真实 DNS 响应。
+* *   DNS 模式之一。内核对域名请求立即返回一个虚假本地 IP，应用程序连接该虚假 IP 后，
+* *   内核截获并将真实域名通过代理协议传递给出口节点，无需等待真实 DNS 响应。
 * *   加速连接建立，减少 DNS 延迟，但 cache.db 中会保留域名映射记录。
 * *
 * * redir-host（真实 IP 重定向模式）
@@ -661,7 +671,7 @@ rules:
 * *   因增删操作必然导致注释漂移，本配置强制使用变量名或逻辑描述作为锚点。
 * *
 * * fallback（回退机制）
-* *   当主路径不可用时自动切换至备用路径的回退机制。
+* *   当主路径不可用时自动切换至备用路径的容错机制。
 * *   本配置显式不依赖外部 fallback：MATCH 兜底保证规则链始终有出口锚点。
 * *
 * * ──────────────────────────────────────────────────────────────────────────────────────
@@ -721,7 +731,7 @@ rules:
 * *
 * * 【懒加载策略分层】
 * *  · 核心路由规则集（本地放行集 / 域名分流集 / IP 分流集）：lazy: false，必须启动即就绪。MRS 直接内存映射，无 Trie 构建阶段，原有的懒加载性能取舍不再必要。
-* *  · 威胁阻断集：lazy: true，可容忍启动初期的短暂穿透窗口。规则集在首次被求值时异步加载，加载完成前到达该规则位置的连接将因 Trie 为空而穿透至后续规则（MRS 下延迟极小）。
+* *  · 综合拦截集：lazy: true，可容忍启动初期的短暂穿透窗口。规则集在首次被求值时异步加载，加载完成前到达该规则位置的连接将因 Trie 为空而穿透至后续规则（MRS 下延迟极小）。
 * *
 * * 【锚点组架构】
 * *  在本文件中声明固定名称策略组 [节点选择]，rules 段硬编码指向此名称。
