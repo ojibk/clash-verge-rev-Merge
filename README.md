@@ -1,4 +1,4 @@
-**完美封版，后续维护迁移至 https://github.com/ojibk/Clash-Script_Merge**
+**封版不再更新，后续维护迁移至 https://github.com/ojibk/Clash-Script_Merge**
 
 * * Clash-Merge 全局扩展覆写配置 · 锚点组与规则链 v260531
 * * --------------------------------------------------------------------------------------
