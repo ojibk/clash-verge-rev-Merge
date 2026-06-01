@@ -40,23 +40,22 @@ geox-url:                       # ⚙️ geodata 下载地址。未声明时 Mih
                                 #    注意：MetaCubeX MRS 规则集来自 @meta 分支；dat/mmdb 发布于 @release 分支，两者不同。
   geoip:   "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.dat"
   geosite: "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geosite.dat"
-# ℹ️ mmdb 字段说明：geodata-mode: true 下主用 geoip.dat / geosite.dat；当 geodata-mode: false 时才使用 mmdb 字段，为 true 时维持声明无影响，仅为保持配置完整性。
+  # ℹ️ mmdb 字段说明：geodata-mode: true 时，geoip.dat / geosite.dat 优先，mmdb 字段被跳过；geodata-mode: false 时，mmdb 为唯一生效数据库路径。保持声明仅为保持配置完整性。
   mmdb:    "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/country.mmdb"
 
-# # ⚠️ sniffer 配置是扩展脚本（Script.js）注入的 UDP/QUIC 域名类规则正常生效的前提，
+# # ⚠️ sniffer 配置是扩展脚本（Script.js）注入的 UDP/QUIC 域名类规则重要前提条件之一，
 # # 禁用 sniffer 将导致这些规则在纯 IP 直连路径（应用绕过 DNS、直接以 IP 建立 UDP/QUIC 连接）下失效。
-# # force-dns-mapping: true：使 Script.js 注入的 DOMAIN 类 AND 多条件组合规则能通过 DNS 映射缓存识别域名；
+# # force-dns-mapping: true：使 Script.js 注入的 DOMAIN 类 AND 多条件组合规则能通过 DNS 映射缓存识别域名。
 # # parse-pure-ip: true：使绕过 DNS 的纯 IP 流量也能触发嗅探，提升 Script.js 规则集的命中率。
 sniffer:
   enable: true                  # ⚙️ 启用流量嗅探：在协议握手或请求阶段提取目标域名，使内核在无 DNS 解析的情况下也能获取域名，用于域名规则匹配。
                                 # ℹ️ 核心价值：应用若直接以 IP 建立连接（绕过 DNS 解析），内核无域名可用，
-                                #    域名规则集（cn / non-cn / advertising 等）完全无法命中，
-                                #    流量只能由统计性 GEOIP,CN 兜底，或直接落入 MATCH 兜底出口。
+                                #    域名类规则集完全无法命中，流量只能由统计性 GEOIP,CN 兜底，或直接落入 MATCH 兜底出口。
                                 #    嗅探来源因协议而异：
                                 #    · TLS：读取 ClientHello 中的 SNI（Server Name Indication，服务器名称指示）字段，该字段在握手阶段明文发出；
                                 #    · HTTP：读取请求头中的 Host 字段，与 SNI 无关；
                                 #    · QUIC：读取 Initial 包 CRYPTO 帧中的 SNI（QUIC 内嵌 TLS 1.3，封装层不同）。
-  force-dns-mapping: true       # ⚙️ 将嗅探到的域名写入内核 DNS 映射缓存，使规则匹配阶段可用嗅探到的域名进行查询，而非仅凭连接 IP，显著提升域名规则集的命中率。
+  force-dns-mapping: true       # ⚙️ 将嗅探域名写入 DNS 映射缓存（若未存在），使规则匹配阶段可用嗅探到的域名进行查询，而非仅凭连接 IP，显著提升域名规则集的命中率。
   parse-pure-ip: true           # ⚙️ 对纯 IP 直连连接（全程无 DNS 解析过程，仅有目标 IP）也启动嗅探，覆盖完全绕过 DNS 的应用（如部分视频 / 游戏客户端硬编码 IP 直连场景）。
                                 # ⚠️ TUN 模式前提：parse-pure-ip 仅在 TUN（虚拟隧道网卡）模式下能完整截获纯 IP 流量；
                                 #    系统代理（System Proxy）模式下，纯 IP 直连流量不经过 Mihomo 接管，此字段对其无效。
@@ -75,13 +74,13 @@ sniffer:
 
 profile:
   store-selected: true          # ⚙️ 策略组节点选择状态持久化：将节点选择写入 cache.db（本地持久化缓存数据库），防止重启或订阅更新、配置重载时导致节点选择状态重置。
-                                # ⚠️ 隐私审计：此字段将策略组节点选择状态写入 cache.db，极端隐私需求可定期清理。
+  #                             # ⚠️ 隐私审计：此字段将策略组节点选择状态写入 cache.db，极端隐私需求可定期清理。
 
-#  store-fake-ip: false         # ⚙️ Fake-IP（虚假 IP DNS 模式）映射持久化：设为 true 则持久化，重启后保持域名与伪 IP 的映射一致；
-#                               # 设为 false（Mihomo 默认值）——重启后伪 IP 映射可能变动，应用程序可能因伪 IP 变化触发重连。
-#                               # ⚠️ 仅 DNS 模式为 fake-ip 时有效，redir-host（真实 IP 重定向模式）下无意义。
-#                               #    维持注释状态即默认禁用，等效于遵循 Mihomo 默认值 false。
-#                               # ⚠️ 隐私审计：启用时 cache.db 将记录域名与 Fake-IP 的映射表，极端隐私需求可定期清理。
+  # store-fake-ip: false        # ⚙️ Fake-IP（虚假 IP DNS 模式）映射持久化：设为 true 则持久化，重启后保持域名与伪 IP 的映射一致；
+  #                             # 设为 false（Mihomo 默认值）——重启后伪 IP 映射可能变动，应用程序可能因伪 IP 变化触发重连。
+  #                             # ⚠️ 仅 DNS 模式为 fake-ip 时有效，redir-host（真实 IP 重定向模式）下无意义。
+  #                             #    维持注释状态即默认禁用，等效于遵循 Mihomo 默认值 false。
+  #                             # ⚠️ 隐私审计：启用时 cache.db 将记录域名与 Fake-IP 的映射表，极端隐私需求可定期清理。
 
 # ⚠️ [deprecated] 此字段已被 Mihomo 标记为废弃，未来可能被内核移除。届时需迁移至节点级 `client-fingerprint` 或移除。
 global-client-fingerprint: chrome   # 🗑️ [deprecated] 全局 TLS 客户端指纹模拟预设，作为内核级全局默认值（节点未定义时的兜底赋值）。
@@ -96,20 +95,19 @@ global-client-fingerprint: chrome   # 🗑️ [deprecated] 全局 TLS 客户端�
 # # ======================================================================================
 # # ░░ 策略组 (Proxy Groups) — 必须声明，锚定策略组是 rules 出口的唯一保障
 # # --------------------------------------------------------------------------------------
-# # ⚠️ 【跨客户端兼容性警告】
-# #  本配置依赖 include-all 字段自动将订阅裸节点填充至 [节点选择] 组。
-# #  该字段由 Mihomo 内核实现，CVR 完整支持；但在 Stash / ClashX / OpenClash 等客户端中该字段被静默跳过，[节点选择] 将成为空组，导致全局网络中断。
-# #  非 CVR 用户须启用下方 proxies 行，将占位符替换为实际节点名，例如 proxies: [节点A, 节点B]
-# #  ⚠️ 继承的节点须为独立可用的底层节点；若订阅仅提供 relay / url-test / fallback 等策略组， include-all 无法继承策略组内容，[节点选择] 将成为空组。
-# #
 # # 【proxy-groups 锚点组设计逻辑】
-# #  · 在本文件中定义固定组名 [节点选择]，rules 段硬编码的代理出口指向此名称。
-# #  · 该组由本文件保证必然存在，切换任意订阅均不会因找不到组名而触发启动报错。
+# #  · 在本文件中定义固定组名 [节点选择]，rules 段硬编码的代理出口指向此名称。该组由本文件保证必然存在，切换任意订阅均不会因找不到组名而触发启动报错。
 # #  · include-all: true 为 Mihomo 内核支持字段，各客户端 UI 兼容性不一：
 # #    CVR 完整实现，Stash / ClashX 等静默跳过（即该策略组不包含任何节点，成为空组）。
 # #    设为 true 时内核启动自动将订阅内所有 outbound proxies（底层代理节点）及 proxy sets（proxy-providers 声明的节点集合）注入本组（proxy groups 及嵌套策略组均不在继承范围内），
 # #    切换订阅后无需手动维护节点列表。大多数机场提供的均为裸节点，"不含 proxy groups"这条限制在常见场景下影响极小。
 # #  ⚠️ 若不声明此块，切换订阅时一旦订阅不含该组名，Mihomo（代理内核）启动即报错 proxy XXX not found，rules 中所有指向该组的条目失效。
+# #
+# # ⚠️ 【跨客户端兼容性警告】
+# #  本配置依赖 include-all 字段自动将订阅裸节点填充至 [节点选择] 组。
+# #  该字段由 Mihomo 内核实现，CVR 完整支持；但在 Stash / ClashX / OpenClash 等客户端中该字段被静默跳过，[节点选择] 将成为空组，导致全局网络中断。
+# #  非 CVR 用户须启用下方 proxies 行，将占位符替换为实际节点名，例如 proxies: [节点A, 节点B]
+# #  ⚠️ 继承的节点须为独立可用的底层节点；若订阅仅提供 relay / url-test / fallback 等策略组， include-all 无法继承策略组内容，[节点选择] 将成为空组。
 # #
 # # 【已知代价】
 # #  proxy-groups 为 Array 类型（有序列表），声明即触发全量替换，订阅原有所有策略组被丢弃。
@@ -133,7 +131,7 @@ proxy-groups:
                       # ⚠️ 外部系统风险：若订阅源返回空节点（订阅失效 / 机场清空节点），
                       #    本配置将整体不可用——Fail-Fast 会将外部错误显式暴露为全局连接失败。
                       #    遇此情况须检查订阅源，或改用硬编码订阅组名方案。
-                      #    ⚡ 空组时触发 Fail-Fast（异常立即暴露为连接失败，不静默降级，见术语字典）。
+                      #    ℹ️ 空组时触发 Fail-Fast（异常立即暴露为连接失败，不静默降级，见术语字典）。
 
     # proxies: [🔴 请手动填入节点]    # ⚠️ 非 CVR 客户端必须手动填入节点名称，例如：proxies: [节点A, 节点B]，应替换 []。
                       # 💡 · [占位符为防御性"错误桩"]；在 CVR 中因指向不存在的节点实体而被内核忽略但不导致启动失败（取决于内核版本），作为空组防御桩存在，
@@ -143,12 +141,12 @@ proxy-groups:
 # # ======================================================================================
 # # ░░ 规则集 (Rule Providers) — Map（键值对）合并，不替换订阅原有条目
 # # --------------------------------------------------------------------------------------
-# # 【格式选择 — MRS 二进制格式】
-# #  全线改用 format: mrs（Mihomo Rule Set 二进制格式）。
-# #  MRS 由 mihomo 内核原生支持，加载时直接内存映射二进制 Trie 树，无 YAML/Text 反序列化开销。
-# #  💡 启动性能：MRS 格式加载开销极小，启动速度与内存占用均显著优于 yaml/text 格式，对大规则集效果最为突出。
-# #  · 支持的 behavior：仅 domain / ipcidr，classical 模式不支持 MRS，本配置无 classical 条目。
-# #  · MRS 来源：MetaCubeX、peiyingyao、DustinWin（每日自动构建），原 Loyalsoldier yaml 与 Blackmatrix7 text 的格式区分约束在 MRS 下不再存在。
+# # 【type: http 规则集类型 — 运行时静默容错机制】
+# #  Mihomo 对远程规则集采用"静默容错"机制，而非强一致加载：
+# #  · 首次启动无缓存且下载失败：该规则集条目数为 0，对应规则匹配失败，流量滑落至后续规则。
+# #  · 非首次启动下载失败（CDN 波动 / DNS 污染 / GitHub 被封锁）：Mihomo 自动使用本地缓存继续运行，用户无感知。
+# #  以上均为 Mihomo 内核机制。本配置通过末尾无条件兜底（MATCH）承接所有未命中流量，保证异常时仍有确定出口。
+# #  若需确认规则集当前状态，可在 CVR >「规则集」界面查看条目数与最后更新时间。
 # #
 # # 【behavior 行为模式性能原理】
 # #  全线选用 domain / ipcidr 模式，内核加载时分别构建：
@@ -160,6 +158,13 @@ proxy-groups:
 # #  MRS 在此基础上进一步优化：以二进制序列化形式存储已构建的 Trie 树，加载时直接内存映射，跳过文本词法/语法分析及 Trie 构建，启动开销接近于零。
 # #  yaml/text 格式需经"磁盘 IO → 反序列化 → Trie 构建"三阶段；MRS 仅需"磁盘 IO → 映射"。
 # #
+# # 【format 格式选择 — MRS 二进制格式】
+# #  全线改用 format: mrs（Mihomo Rule Set 二进制格式）。
+# #  MRS 由 mihomo 内核原生支持，加载时直接内存映射二进制 Trie 树，无 YAML/Text 反序列化开销。
+# #  💡 启动性能：MRS 格式加载开销极小，启动速度与内存占用均显著优于 yaml/text 格式，对大规则集效果最为突出。
+# #  · 支持的 behavior：仅 domain / ipcidr，classical 模式不支持 MRS，本配置无 classical 条目。
+# #  · MRS 来源：MetaCubeX、peiyingyao、DustinWin（每日自动构建），原 Loyalsoldier yaml 与 Blackmatrix7 text 的格式区分约束在 MRS 下不再存在。
+# #
 # # 【策略动作解耦原则】
 # #  所有规则集文件均不内置策略动作，流量最终去向完全由 rules 段行末指令统一决定。
 # #  采用"纯列表 + 外挂 RULE-SET 指令"时，Trie 树命中后需一次哈希查找将规则集名映射至策略组，开销约为 O(1)，实际可忽略不计。
@@ -169,21 +174,13 @@ proxy-groups:
 # #  规则集使用 testingcf.jsdelivr.net（jsDelivr 官方 Cloudflare 节点），相比 fastly.jsdelivr.net 在国内可达性更稳定，无需依赖第三方代理中转。
 # #  MRS 文件来源：MetaCubeX、peiyingyao、DustinWin，每日自动构建，覆盖 geosite / geoip 两大类别。
 # #
-# # 【type: http 运行时行为 — 静默容错机制】
-# #  Mihomo 对远程规则集采用"静默容错"机制，而非强一致加载：
-# #  · 首次启动无缓存且下载失败：该规则集条目数为 0，对应规则匹配失败，流量滑落至后续规则。
-# #  · 非首次启动下载失败（CDN 波动 / DNS 污染 / GitHub 被封锁）：Mihomo 自动使用本地缓存继续运行，用户无感知。
-# #  以上均为 Mihomo 内核机制。本配置通过末尾无条件兜底（MATCH）承接所有未命中流量，保证异常时仍有确定出口。
-# #  若需确认规则集当前状态，可在 CVR >「规则集」界面查看条目数与最后更新时间。
-# #
 # #  ⚠️ 规则集失效退化路径：
 # #  加载失败 → 优先使用缓存；首次启动且下载失败 → 该规则集条目数为 0。
 # #  当综合拦截集与域名分流集均为 0 条时，规则链穿透路径为：本地放行集 → 归属地映射 → 无条件兜底（MATCH）。
-# #  ⚡ 当 MATCH 设置为代理出口时效果：几乎全部流量进入代理出口（回退为近似全局代理模式），用户无明显提示。建议通过日志或 CVR「规则集」界面定期检查规则集加载状态。
+# #  ℹ️ 当 MATCH 设置为代理出口时效果：几乎全部流量进入代理出口（回退为近似全局代理模式），用户无明显提示。建议通过日志或 CVR「规则集」界面定期检查规则集加载状态。
 # #
 # #  使用说明：
-# #  ⚠️ 强联动约束（双向同步）：若需禁用，须同时注释此块与 rules 段的对应规则行后再重载。
-# #   · 风险：仅注释此块而 rules 行仍活跃：内核启动即报错，整个配置加载失败。两者互为前置依赖，作为强联动约束必须同步禁用，不可分步重载。
+# #  ⚠️ 强联动约束（双向同步）：启用或禁用须同步注释 rule-providers 块与 rules 段的对应规则行的注释状态。两者互为前置依赖，仅注释其中一处，内核启动即报错，整个配置加载失败。
 
 rule-providers:
 
@@ -281,7 +278,6 @@ rule-providers:
     type: http        # ℹ️ 类型：远程 HTTP 资源。
     behavior: domain  # ℹ️ 行为：域名模式，MRS 直接内存映射已构建的后缀匹配树（Domain Trie）。
     format: mrs       # ℹ️ 格式：MRS 二进制格式，加载时直接映射，跳过 YAML/Text 反序列化与 Trie 构建，二进制解析开销极低。
-                      #    原用 text 格式时因条目数量庞大须懒加载以规避 IPC 超时；MRS 格式已无此顾虑，改为启动即就绪。
     url: "https://testingcf.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@meta/geo/geosite/cn.mrs"
                       #    来源仓库：https://github.com/MetaCubeX/meta-rules-dat/tree/meta/geo/geosite
                       #    备用直链（jsDelivr 失效时）：https://github.com/MetaCubeX/meta-rules-dat/raw/meta/geo/geosite/cn.mrs
@@ -328,7 +324,7 @@ rule-providers:
 # # 【规则执行模型】
 # #  核心逻辑：规则按自上而下的顺序逐行求值，命中即停止（First-Match 优先命中策略）。
 # #  💡 设计哲学：空间维度的排序，即时间维度的优先级。即规则的列表顺序（空间位置）决定流量匹配的优先级（执行顺序）——调整位置即调整路由策略。
-# #  ⚠️ 规则顺序即优先级——调整顺序将直接改变流量去向，后续规则绝对无法“补充”或“覆盖”已命中前置规则的流量路径。
+# #  ⚠️ 规则顺序即优先级——调整顺序将直接改变流量去向，后续规则绝对无法“覆盖”已命中前置规则的流量路径。
 # #  MATCH 为最终兜底规则，必须位于规则链末尾，不可省略。
 # #
 # # 【规则分层设计】
@@ -344,7 +340,7 @@ rule-providers:
 # #                 实际行为依赖协议（TCP/UDP）及客户端实现。适用场景：防止进程感知被拦截后快速切换备用链路或频繁重试。
 # #                 ⚡ 代价：软件启动时若命中 REJECT-DROP 规则，会有明显卡顿；如遇此情况，可改为 REJECT。
 # #  ▌域名分流集：   远程规则集分流，依赖加载状态。
-# #                 cn 与 non-cn 可能存在少量重叠域名，并非严格互斥：极少数域名可能同时被两个列表收录，实际行为由规则顺序决定；cn 在前是有意为之的优先级设计。
+# #                 直连集与代理集可能存在少量重叠域名，并非严格互斥：极少数域名可能同时被两个列表收录，实际行为由规则顺序决定；直连规则在代理之前是有意为之的优先级设计。
 # #  ▌归属地映射：   内置 GeoIP 库，统计性准确，CDN 场景存在误判风险。
 # #                 ⚠️ GeoIP ≠ 真实地理位置。基于 IP 归属数据库，不代表物理位置；在 CDN / Anycast 跨区调度场景下可能出现"境外服务命中 CN"或反之。
 # #                 💡 层内顺序遵循确定性优先：PRIVATE（绝对确定）在 CN（统计性集合）之前。
@@ -365,7 +361,7 @@ rule-providers:
 
 rules:
   # 【规则执行模型】First-Match 优先命中策略：规则按顺序匹配，命中即停止。
-  # ⚠️ 规则顺序即优先级——调整顺序将直接改变流量去向，后续规则绝对无法“推翻”已命中前置规则的流量路径。
+  # ⚠️ 规则顺序即优先级——调整顺序将直接改变流量去向，后续规则绝对无法“覆盖”已命中前置规则的流量路径。
   # ⚠️ 若需禁用，须同时注释该行与 rule-providers 中的对应规则集内容块后再重载（强联动约束），不可分步。
 
   # ▌本地放行集 — 命中后动作绝对确定（DIRECT），无统计性误判风险
@@ -378,7 +374,7 @@ rules:
   # - RULE-SET,threat,REJECT              # 🚫 恶意特征域名拦截集 → 拒绝，追踪器/恶意软件/C2 安全防护。
 
   # ▌域名分流集 — cn 规则集在前确保国内域名优先命中
-  - RULE-SET,amazon,DIRECT              # 🔓 个人扩展：亚马逊购物常用域名集 → 直连，基于 Domain Trie 极速命中。
+  - RULE-SET,amazon,DIRECT              # 🔓 个人扩展：亚马逊购物常用域名集 → 直连，基于 Domain Trie 极速命中。置于分流集的顶层是方便切换为代理出口（需优先命中）。
   - RULE-SET,cn,DIRECT                  # 🔓 国内主流域名 → 直连，基于 Domain Trie 极速命中。精确域名匹配直接放行，无需经过 GeoIP 推断，自然规避 CDN 归属误判；
                                         #    小众域名盲区由归属地映射层（GEOIP,CN）补盲覆盖。
   - RULE-SET,non-cn,节点选择             # 🛡️ 境外代理域名 → 送入锚点组 [节点选择]，经用户所选代理节点出站。
@@ -731,14 +727,6 @@ rules:
 # #  · 核心路由规则集（本地放行集 / 域名分流集 / IP 分流集）：lazy: false，必须启动即就绪。MRS 直接内存映射，无 Trie 构建阶段，原有的懒加载性能取舍不再必要。
 # #  · 综合拦截集：lazy: true，可容忍启动初期的短暂穿透窗口。规则集在首次被求值时异步加载，加载完成前到达该规则位置的连接将因 Trie 为空而穿透至后续规则（MRS 下延迟极小）。
 # #
-# # 【锚点组架构】
-# #  在本文件中声明固定名称策略组 [节点选择]，rules 段硬编码指向此名称。
-# #  目的：切换任意订阅时，组名由本文件保证必然存在；若依赖订阅自带组名，换订阅后内核因找不到出口组名报 proxy XXX not found 启动失败。
-# #
-# # 【threat 规则集 — 强联动约束】
-# #  threat 提供追踪器 / 恶意软件 / C2 防护层（与 blackmatrix7/EasyPrivacy 语义近似）。
-# #  ⚠️ 启用或禁用时须同步 rule-providers 中的 threat 块与 rules 段的 RULE-SET,threat,REJECT 行的注释状态，不可分步重载，仅注释其中一处，内核启动即报错，整个配置加载失败。
-# #
 # # 【geodata-mode: true — GeoIP 数据库格式切换（统一归属判定基准）+ geox-url 落地】
 # #  切换内置 GeoIP 数据库为 dat 格式（MetaCubeX 自维护）。同时配置 geo-auto-update: true / geo-update-interval: 24 / geox-url（jsDelivr CF 节点）；
 # #  缺少这三项时，dat 文件停留在内核捆绑的出厂版本，统一归属判定基准目的在运行中无法兑现。
@@ -748,7 +736,7 @@ rules:
 # #  启用字段：enable / force-dns-mapping / parse-pure-ip / sniff(TLS+HTTP+QUIC)
 # #  未启用：override-destination（行为激进，绑定 IP 的 HTTPS 应用会异常）
 # #  未配置：skip-domain（如发现 IoT 设备管理域名嗅探误判，可按需添加）
-# #  触发原因：应用直接以 IP 建立连接（绕过 DNS）时，域名规则集（cn / non-cn 等）完全无法命中，流量只能由统计性 GEOIP,CN 匹配或落入 MATCH 兜底，分流精度严重下降。
+# #  触发原因：应用直接以 IP 建立连接（绕过 DNS）时，域名类规则集完全无法命中，流量只能由统计性 GEOIP,CN 匹配或落入 MATCH 兜底，分流精度严重下降。
 # #  force-dns-mapping + parse-pure-ip 是补齐这一盲区的最小必要组合。
 # #  ⚠️ parse-pure-ip 仅在 TUN 模式下对纯 IP 流量完整生效，系统代理模式下效果有限。
 # # ======================================================================================
